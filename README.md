@@ -54,3 +54,8 @@ shir = audioread( ??? ) % load input audio, which should use ACN/N3D conventions
 ## 4  License
 
 This code is provided under the [BSD 3-clause license](https://opensource.org/licenses/BSD-3-Clause). 
+
+## References 
+
+[1] McCormack, L., Politis, A., Scheuregger, O., and Pulkki, V. (2019). "**Higher-order processing of spatial impulse responses**".
+In Proceedings of the 23rd International Congress on Acoustics, 9--13 September 2019 in Aachen, Germany.
