@@ -24,7 +24,7 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars, ENAB
 %     pars.nBroadbandPeaks   : number of peaks to pan using broadband DoAs
 %     pars.cycles_diff       : time constant for diffuseness computation, 
 %                              in cycles per center frequency
-%     pars.alpha_diff_lim    : smallest one-pole allowed alpha value for 
+%     pars.alpha_diff        : smallest one-pole allowed alpha value for
 %                              smoothing diff 
 %                              y(n) = alpha*y(n-1) + (1-alpha)*x(n)
 %     pars.decorrelationType : {'phase','noise'}  
