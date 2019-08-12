@@ -1,12 +1,15 @@
 # HO-SIRR
+
 Higher-order Spatial Impulse Response Rendering (HO-SIRR).
+
+**(Please note that the code is currently very much "work in progress")**
 
 
 ## Getting Started
 
 The code is reliant on the following Matlab libraries:
-* [Spherical-Harmonic-Transform](https://github.com/polarch/Spherical-Harmonic-Transform))
-* [Higher-Order-Ambisonics](https://github.com/polarch/Higher-Order-Ambisonics))
+* [Spherical-Harmonic-Transform](https://github.com/polarch/Spherical-Harmonic-Transform)
+* [Higher-Order-Ambisonics](https://github.com/polarch/Higher-Order-Ambisonics)
 
 The HO-SIRR script should be configured, for example, as:
 ```
