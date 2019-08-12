@@ -47,9 +47,9 @@ shir = audioread( ??? ) % load input audio, which should use ACN/N3D conventions
 
 ## 3  Developers
 
-* **Leo McCormack** - C programmer and algorithm designer (contact: leo.mccormack@aalto.fi)
-* **Archontis Politis** - algorithm designer
-* **Ville Pulkki** - algorithm designer
+* **Leo McCormack** - Matlab programmer and algorithm design (contact: leo.mccormack@aalto.fi)
+* **Archontis Politis** - Matlab programmer and algorithm design
+* **Ville Pulkki** - algorithm design
 
 ## 4  License
 
