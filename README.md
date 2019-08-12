@@ -16,17 +16,13 @@ pars.ls_dirs_deg = ???; % your loudspeaker dirs, [azi elev], in degrees
 
 % Specify windowing sizes for multi-resolution STFT, for example:
 pars.multires_winsize = [1024 128 16]; 
-pars.multires_xovers = [500 2e3]; % 1024 up to 500Hz, then 128 up to 
-% 2kHz, then 16 past 2kHz (Note HOSIRR uses 50% window overlap)
+pars.multires_xovers = [500 2e3]; % 1024 up to 500Hz, then 128 up to 2kHz, then 16 past 2kHz (Note HOSIRR uses 50% window overlap)
 
 % Diffuse rendering parameters
 pars.RENDER_DIFFUSE = 1;     % 0: disable diffuse rendering, 1: enable
-pars.decorrelationType = 'noise'; % {'phase','noise'}, decorrelation via
-%convolution with 'noise', or via randomising the 'phase'
-pars.maxDiffuseAnalysis_Hz = 6e3; % frequency up to which to estimate the
-% diffuseness parameter 
-pars.alpha_diff = 0.975;     % minimum diffuseness averaging coefficient 
-% (one-pole filter)
+pars.decorrelationType = 'noise'; % {'phase','noise'}, decorrelation via convolution with 'noise', or via randomising the 'phase'
+pars.maxDiffuseAnalysis_Hz = 6e3; % frequency up to which to estimate the diffuseness parameter 
+pars.alpha_diff = 0.975;     % minimum diffuseness averaging coefficient (one-pole filter)
 
 % Optionally, the first highest N peaks of the response may be isolated
 % and pnned with a broad-band 
