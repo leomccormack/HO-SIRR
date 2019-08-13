@@ -11,9 +11,15 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars, ENAB
 %
 % INPUT ARGUMENTS
 %     shir                   : spherical harmonic domain impulse response
-%                              (ACN/N3D), [signalLength  x (order+1)^2]
+%                              [signalLength  x (order+1)^2]
+%     pars.chOrdering        : {'ACN','WXYZ'} channel ordering convention. 
+%                              Note: 'WXYZ' refers to "FuMa", which is 
+%                              first-order only.
+%     pars.normScheme        : {'N3D','SN3D'}, normalisation convention. 
+%                              fully normalised (N3D), or semi-normalised
+%                              (SN3D) conventions are supported.
 %     pars.fs                : sample rate
-%     pars.ls_dirs_deg       : LS directions in degrees [azi elev]
+%     pars.ls_dirs_deg       : LS directions in DEGREES [azi elev]
 %     pars.multires_winsize  : [winsize_low winsize_2 ... winsize_high]
 %     pars.multires_xovers   : [xover_low ... xover_high]
 %     pars.panningNormCoeff  : {0,1} 0 for normal room, 1 for anechoic
@@ -28,7 +34,8 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars, ENAB
 %                              smoothing diff 
 %                              y(n) = alpha*y(n-1) + (1-alpha)*x(n)
 %     pars.decorrelationType : {'phase','noise'}  
-%     pars.orderPerBand      : scalar for same order at all bands,
+%     pars.orderPerBand      : (Optional)
+%                              scalar for same order at all bands,
 %                              [nBandsx1] for different orders at different
 %                              bands (NOT IMPLEMENTED YET)
 %
@@ -50,7 +57,17 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars, ENAB
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+nSH = size(shir,2);
+pars.maxOrder = sqrt(nSH)-1;
+
+
 %%% Defaults/Warnings/Errors: 
+if ( (pars.maxOrder>1) && strcmp(pars.chOrdering, 'WXYZ') )
+    disp('Warning: WXYZ/FuMa is first-order only. Input signals have been truncated to first-order')
+    pars.maxOrder = 1;
+    nSH = int32((pars.maxOrder+1).^2);
+    shir = shir(:,1:nSH);
+end
 if (~isfield(pars, 'fs')), error('Please specify "fs"'); end
 if (~isfield(pars, 'ls_dirs_deg')) 
     error('Please specify "ls_dirs_deg", in degrees')
@@ -64,19 +81,26 @@ else
     nRes = length(pars.multires_winsize);
 end 
 
+
+%%% HO-SIRR
 disp('HOSIRR Configuration:'), pars %#ok
 
-lSig = size(shir,1);
-nSH = size(shir,2);
+% convert to 'ACN/N3D' Ambisonic convention
+if strcmp(pars.chOrdering, 'WXYZ')
+    shir = convert_N3D_Bformat(shir, 'b2n'); 
+elseif (strcmp(pars.chOrdering, 'ACN') && strcmp(pars.normScheme, 'SN3D'))
+    shir = convert_N3D_SN3D(shir, 'sn2n');
+end
 
 % normalise input to max(|insig|) = 1
+lSig = size(shir,1);
 shir = shir./(max(abs(shir(:,1))));
 
 % extract the first N highest peaks
 if pars.BROADBAND_DIRECT
     shir_tmp = shir;
     inv_direct_win = ones(lSig,1);
-    figure
+    if ENABLE_PLOTS, figure; end
     for peak = 1:pars.nBroadbandPeaks
         % find the index of highest peak in the omni
         [~, peak_ind] = max(abs(shir_tmp(:,1)).^2);
@@ -118,8 +142,7 @@ vbap_gtable_res = [2 2]; % azi, elev, step sizes in degrees
 gtable = getGainTable(ls_dirs_deg, vbap_gtable_res); 
  
 % Sector design
-maxOrder = sqrt(nSH)-1;
-for order_i = 1:maxOrder
+for order_i = 1:pars.maxOrder
     [~,sec_dirs_rad] = getTdesign(2*(order_i)); 
     A_xyz = computeVelCoeffsMtx(order_i-1);
     [pars.sectorCoeffs{order_i}, pars.normSec{order_i}] = computeSectorCoeffs(order_i-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
@@ -127,7 +150,7 @@ for order_i = 1:maxOrder
         pars.sectorDirs{order_i-1} = sec_dirs_rad;
     end
 end 
-maxNumSec = size(pars.sectorCoeffs{maxOrder},2)/4;
+maxNumSec = size(pars.sectorCoeffs{pars.maxOrder},2)/4;
 
 % divide signal to frequency regions
 if (nRes>1)
@@ -176,7 +199,7 @@ for nr = 1:nRes
     win = sin(x.*(pi/winsize))'.^2;
     
     % sectors
-    order = maxOrder; 
+    order = pars.maxOrder; 
     sectorCoeffs_order = pars.sectorCoeffs{order}./sqrt(4*pi);  
     nSec_order = size(sectorCoeffs_order,2)/4;
     

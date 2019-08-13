@@ -2,7 +2,7 @@
 
 Higher-order Spatial Impulse Response Rendering (HO-SIRR).
 
-**(Please note that the code is currently very much "work in progress")**
+**(Please note that the code is currently very much "work in progress". Feedback is most welcome!)**
 
 
 ## Getting Started
@@ -59,3 +59,13 @@ This code is provided under the [BSD 3-clause license](https://opensource.org/li
 
 [1] McCormack, L., Politis, A., Scheuregger, O., and Pulkki, V. (2019). "**Higher-order processing of spatial impulse responses**".
 In Proceedings of the 23rd International Congress on Acoustics, 9--13 September 2019 in Aachen, Germany.
+
+[2] Politis, A. and Pulkki, V., 2016. "**Acoustic intensity, energy-density and diffuseness estimation in a directionally-constrained region**". 
+arXiv preprint arXiv:1609.03409.
+
+[3] Merimaa, J. and Pulkki, V., 2005. "**Spatial impulse response rendering I: Analysis and synthesis**". 
+Journal of the Audio Engineering Society, 53(12), pp.1115-1127.
+
+[4] Pulkki, V. and Merimaa, J., 2006. "**Spatial impulse response rendering II: Reproduction of diffuse sound and listening tests**". 
+Journal of the Audio Engineering Society, 54(1/2), pp.3-20.
+
