@@ -16,7 +16,7 @@ clear all, close all, dbstop if error %#ok
 
 
 %% CHECKS
-return;
+%return;
 %% HO-SIRR COMPARED WITH REFERENCE AND AMBISONICS
 % A simulated Auditorium using LoRA, configured for a 36point t-design
 % loudspeaker array [1].
@@ -35,17 +35,19 @@ pars.nBroadbandPeaks = 1;
 pars.decorrelationType = 'noise'; 
 pars.maxDiffuseAnalysis_Hz = 6e3;  
 pars.alpha_diff = 0.975;
+pars.chOrdering = 'ACN';
+pars.normScheme = 'N3D';
 
 % Encode reference audio into spherical harmonics
 [refir, fs] = audioread([LS_REFERENCE_FILE_NAME '.wav']); % load input SHD IR, (ACN/N3D)
-shir = refir * getRSH(pars.order, pars.ls_dirs_deg)';
+shir = refir * (sqrt(4*pi).*getRSH(pars.order, pars.ls_dirs_deg)');
 
 % APPLY HO-SIRR
 [sirr,sirr_ndiff,sirr_diff,pars,~] = HOSIRR(shir, pars, 0);
 audiowrite([LS_REFERENCE_FILE_NAME '_HOSIRR_o' num2str(pars.order) '.wav'], 0.3.*sirr, fs);
 
 % AMBISONICS
-ambiIR = shir * getRSH(pars.order, pars.ls_dirs_deg)./size(pars.ls_dirs_deg, 1);
+ambiIR = shir * (sqrt(4*pi).*getRSH(pars.order, pars.ls_dirs_deg)./size(pars.ls_dirs_deg, 1));
 
 % Plots
 subplot(1,3,1), s = surf(10*log10(abs(refir.')));
@@ -81,10 +83,12 @@ pars.decorrelationType = 'noise';
 pars.BROADBAND_DIRECT = 0;     
 pars.maxDiffuseAnalysis_Hz = 6e3;  
 pars.alpha_diff = 0.975;
+pars.chOrdering = 'ACN';
+pars.normScheme = 'N3D';
 
 % --- Single plane-wave input --- 
 src_dir = [-45 -45];  % try adding more than 1 plane-wave, to see the first-order analysis break
-shir = randn(pars.fs, size(src_dir,1)) * getRSH(pars.order, src_dir).';
+shir = randn(pars.fs, size(src_dir,1)) * (sqrt(4*pi).*getRSH(pars.order, src_dir)).';
 [~,~,~,~,analysis] = HOSIRR(shir, pars, 0);
 
 % In this case, we would expect:
@@ -105,7 +109,7 @@ figure, plot(analysis.diff{1}(1,:)), title('diffuseness'), grid on, ylim([0 1])
 
 % --- Diffuse input --- 
 [~, diff_dirs] = getTdesign(21); % approximate diffuse-field with 240 incoherent noise sources
-shir = randn(pars.fs, size(diff_dirs,1)) * getRSH(pars.order, diff_dirs*180/pi).';
+shir = randn(pars.fs, size(diff_dirs,1)) * (sqrt(4*pi).*getRSH(pars.order, diff_dirs*180/pi)).';
 [~,~,~,~,analysis] = HOSIRR(shir, pars, 0);
 
 % In this case, we would expect:
@@ -139,10 +143,12 @@ pars.decorrelationType = 'noise';
 pars.BROADBAND_DIRECT = 0;     
 pars.maxDiffuseAnalysis_Hz = 6e3;  
 pars.alpha_diff = 0.975;
+pars.chOrdering = 'ACN';
+pars.normScheme = 'N3D';
 
 % --- Three plane-wave input --- 
 src_dir = [26 15; 153 -15; -116 -15]; % plane-waves landing in sectors: 1, 5, and 16
-shir = randn(pars.fs, size(src_dir,1)) * getRSH(pars.order, src_dir).';
+shir = randn(pars.fs, size(src_dir,1)) * (sqrt(4*pi).*getRSH(pars.order, src_dir)).';
 [~,~,~,~,analysis] = HOSIRR(shir, pars, 0);
 
 % In this case, for sectors (1,5,16) we would expect:

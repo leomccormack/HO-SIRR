@@ -215,9 +215,9 @@ for nr = 1:nRes
         % New SIRR diffuse stream, based on scaling the sector signals with diffuseness estimates
         % and then re-encoding them into SHs, and then decoding them to the loudspeaker setup
             if order>1
-                Y_enc = getRSH(order, sectorDirs_order*180/pi); % encoder
+                Y_enc = sqrt(4*pi).*getRSH(order, sectorDirs_order*180/pi); % encoder
             end   
-            M_diff = getRSH(order, ls_dirs_deg).'/sqrt(nLS*nSH);   
+            M_diff = sqrt(4*pi).*getRSH(order, ls_dirs_deg).'/sqrt(nLS*nSH);   
     end 
      
     % diffuseness averaging buffers 
