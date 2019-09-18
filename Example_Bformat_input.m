@@ -1,6 +1,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Bformat input example
 % ---------------------
+% A simple example of how to render an input spherical harmonic impulse 
+% response for a specific loudspeaker arrangement using HOSIRR.
 % 
 % DEPENDENCES
 %     Spherical-Harmonic-Transform Matlab library
@@ -19,12 +21,12 @@ clear all, close all, dbstop if error %#ok
 
 %% Define Input IR
 % For demonstration purposes, this is a simulated Auditorium using LoRA [1]
-% configured for a 36point t-design array [1].
+% configured for DTU's AVIL anechoic listening room.
 demo_order = 3; % order to encode Auditorium
-[refir, fs] = audioread('Auditorium_36_Tdesign.wav');  
-[~,t_dirs_rad] = getTdesign(8); % directions at which the Auditorium was simulated
-t_dirs_deg = t_dirs_rad*180/pi; 
-shir = refir * getRSH(demo_order, t_dirs_deg)'; % encode to spherical harmonics
+[refir, fs] = audioread('Auditorium_64ch_DTU_AVIL.wav');  
+load('DTU_ls_dirs_deg.mat')
+shir = refir * getRSH(demo_order, ls_dirs_deg)'; % encode to spherical harmonics
+clear ls_dirs_deg;
 % [1] Favrot, S. and Buchholz, J.M., 2010. LoRA: A loudspeaker-based room 
 %     auralization system. Acta Acustica united with Acustica, 96(2), 
 %     pp.364-375.

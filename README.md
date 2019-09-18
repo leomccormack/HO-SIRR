@@ -1,9 +1,10 @@
 # HO-SIRR
 
-Higher-order Spatial Impulse Response Rendering (HO-SIRR).
+Higher-order Spatial Impulse Response Rendering (HO-SIRR) is a rendering method, which can generate output loudspeaker array impulse responses from input spherical harmonic (Ambisonic) impulse responses. The method makes assumptions regarding the composition of the sound-field and extracts parameters over time, which allows the HOSIRR renderer to map in the input to the output in an adaptive and more informed manner when compared to linear methods; such as Ambisonics. 
 
 **(Please note that the code is currently very much "work in progress". Feedback is most welcome!)**
 
+![](SIRR_vs_Ambi_vs_Reference.png)
 
 ## Getting Started
 
@@ -11,11 +12,11 @@ The code is reliant on the following Matlab libraries:
 * [Spherical-Harmonic-Transform](https://github.com/polarch/Spherical-Harmonic-Transform)
 * [Higher-Order-Ambisonics](https://github.com/polarch/Higher-Order-Ambisonics)
 
-The HO-SIRR script should be configured, for example, as:
+The HO-SIRR script may be configured, for example, as:
 ```
 pars.order = 3; % transform order of input signals  
 pars.fs = 48e3; 
-pars.ls_dirs_deg = ???; % your loudspeaker dirs, [azi elev], in degrees
+pars.ls_dirs_deg = ???; % your loudspeaker directions, [azi elev], in degrees
 
 % Specify windowing sizes for multi-resolution STFT, for example:
 pars.multires_winsize = [1024 128 16]; 
@@ -28,15 +29,18 @@ pars.maxDiffuseAnalysis_Hz = 6e3; % frequency up to which to estimate the diffus
 pars.alpha_diff = 0.975;     % minimum diffuseness averaging coefficient (one-pole filter)
 
 % Optionally, the first highest N peaks of the response may be isolated
-% and pnned with a broad-band 
+% and panned with broad-band DoA estimates, which can reduce timbral 
+% colourations of the method
 pars.BROADBAND_DIRECT = 1;   % 0: disabled, 1: enabled
 pars.nBroadbandPeaks = 1;    % number of peaks to isolate 
 ```
 
-The input Ambisonic signals (ACN/N3D) may be rendered for the loudspeaker set-up as:
+The input Ambisonic signals may be rendered for the loudspeaker set-up as:
 
 ```
-shir = audioread( ??? ) % load input audio, which should use ACN/N3D conventions
+pars.chOrdering = 'ACN'; % 'ACN', or 'WXYZ'  
+pars.normScheme = 'N3D'; % 'N3D', or 'SN3D'
+shir = audioread( ??? ) % load input audio
 [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars);
 % lsir       - output loudspeaker impulse responses
 % lsir_ndiff - output loudspeaker impulse responses, direct stream only
@@ -45,13 +49,13 @@ shir = audioread( ??? ) % load input audio, which should use ACN/N3D conventions
 % analysis   - analysed parameters stored during rendering
 ```
 
-## 3  Developers
+## Developers
 
-* **Leo McCormack** - Matlab programmer and algorithm design (contact: leo.mccormack@aalto.fi)
-* **Archontis Politis** - Matlab programmer and algorithm design
-* **Ville Pulkki** - algorithm design
+* **Leo McCormack** - Matlab and algorithm design (contact: leo.mccormack@aalto.fi)
+* **Archontis Politis** - Matlab and algorithm design
+* **Ville Pulkki** - Matlab and algorithm design
 
-## 4  License
+## License
 
 This code is provided under the [BSD 3-clause license](https://opensource.org/licenses/BSD-3-Clause). 
 
@@ -69,3 +73,4 @@ Journal of the Audio Engineering Society, 53(12), pp.1115-1127.
 [4] Pulkki, V. and Merimaa, J., 2006. "**Spatial impulse response rendering II: Reproduction of diffuse sound and listening tests**". 
 Journal of the Audio Engineering Society, 54(1/2), pp.3-20.
 
+[5] Favrot, S. and Buchholz, J.M., 2010. "**LoRA: A loudspeaker-based room auralization system. Acta Acustica united with Acustica**", 96(2),  pp.364-375.
