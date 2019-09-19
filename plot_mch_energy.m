@@ -157,7 +157,7 @@ if ~enableSDMplots; return; end
 shir = ref * getRSH(1, ls_dirs_deg).'; 
 
 % convert shir to the ambisonic conventions used by SDM
-shir = shir(:, [1 3 4 2]); % convert from ACN to WXYZ ordering
+shir = shir(:, [1 4 2 3]); % convert from ACN to WXYZ ordering
 shir(:, 2:4) = shir(:, 2:4)./sqrt(3); % convert from N3D to SN3D normalisation
 
 % configure and apply SDM, these values were taken from the demo scripts in
