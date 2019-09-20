@@ -1,8 +1,10 @@
 # HO-SIRR
 
-Higher-order Spatial Impulse Response Rendering (HO-SIRR) is a rendering method, which can generate output loudspeaker array impulse responses from input spherical harmonic (Ambisonic) impulse responses. The method makes assumptions regarding the composition of the sound-field and extracts parameters over time, which allows the HOSIRR renderer to map in the input to the output in an adaptive and more informed manner when compared to linear methods; such as Ambisonics. 
+Higher-order Spatial Impulse Response Rendering (HO-SIRR) is a rendering method, which can generate output loudspeaker array impulse responses (IRs) from input spherical harmonic (Ambisonic) IRs. The method makes assumptions regarding the composition of the sound-field and extracts parameters over time, which allows the HOSIRR renderer to map in the input to the output in an adaptive and more informed manner when compared to linear methods; such as Ambisonics. 
 
-**(Please note that the code is currently very much "work in progress". Feedback is most welcome!)**
+The idea is that you then convolve a monophonic source with this loudspeaker array IR, and it is not only reproduced in the direction relative to the source/receiver during the capturing of the Ambisonic IRs, but it should also exhibit all of the spatial characteristics of the captured space.
+
+**(Please note that the code is currently a "work in progress". Feedback is most welcome!)**
 
 ![](SIRR_vs_Ambi_vs_Reference.png)
 
