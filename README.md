@@ -13,6 +13,7 @@ The idea is that you then convolve a monophonic source with this loudspeaker arr
 The code is reliant on the following Matlab libraries:
 * [Spherical-Harmonic-Transform](https://github.com/polarch/Spherical-Harmonic-Transform)
 * [Higher-Order-Ambisonics](https://github.com/polarch/Higher-Order-Ambisonics)
+* [Vector-Base-Amplitude-Panning](https://github.com/polarch/Vector-Base-Amplitude-Panning)
 
 The HO-SIRR script may be configured, for example, as:
 ```
