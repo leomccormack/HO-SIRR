@@ -1,13 +1,17 @@
-function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars)
+function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR_orderPerBand(shir, pars)
 % Higher-Order Spatial Impulse Response Rendering (HOSIRR)
 % --------------------------------------------------------
-% Multi-resolution Higher-order Spatial Impulse Response Rendering
+% Multi-resolution Higher-order Spatial Impulse Response Rendering.
+% Unlike "HOSIRR.m", this version supports frequency-dependent decoding
+% orders.
 % 
 % DEPENDENCES
 %   Spherical-Harmonic-Transform Matlab library
 %       https://github.com/polarch/Spherical-Harmonic-Transform
 %   Higher-Order-Ambisonics Matlab library
 %       https://github.com/polarch/Higher-Order-Ambisonics
+%   Vector-Base-Amplitude-Panning
+%       https://github.com/polarch/Vector-Base-Amplitude-Panning
 %
 % INPUT ARGUMENTS
 %   shir                       : spherical harmonic domain impulse response
@@ -22,18 +26,16 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars)
 %   pars.ls_dirs_deg           : loudspeaker array directions in DEGREES 
 %                                [azi elev] convention
 %   pars.multires_winsize      : [winsize_low winsize_2 ... winsize_high]
-%   pars.multires_xovers       : [xover_low ... xover_high] 
+%   pars.multires_xovers       : [xover_low ... xover_high]
+%   pars.freqLimits            : [freq_low ... freq_high]
+%   pars.procOrders            : [ana_order_low ana_order_2 ana_order_high]
+%   pars.panningNormCoeff      : {0,1} 0 for normal room, 1 for anechoic
+%                                (NOT IMPLEMENTED YET)
 %   pars.RENDER_DIFFUSE        : {0,1} 0 off, 1 new diffuse stream via
 %                                ambisonic decoding of diffuseness scaled
 %                                sector signals
 %   pars.BROADBAND_FIRST_PEAK  : {0,1} 0 off, 1 broadband analysis for 
-%                                direct
-%   pars.BROADBAND_DIFFUSENESS : {0,1} 0 diffuseness computed per
-%                                frequency bin, 1 diffuseness computed up
-%                                to "maxDiffFreq_Hz", and replicated for
-%                                all bins
-%   pars.maxDiffFreq_Hz        : frequency up to which to compute the
-%                                diffuseness parameter for
+%                                direct  
 %   pars.alpha_diff            : one-pole alpha value for smoothing diff 
 %                                y(n) = alpha*y(n-1) + (1-alpha)*x(n)
 %   pars.decorrelationType     : {'phase','noise'}  
@@ -60,7 +62,7 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars)
 %       Engineering Society, 53(12), pp.1115-1127.
 %   [4] Pulkki, V. and Merimaa, J., 2006. "Spatial impulse response 
 %       rendering II: Reproduction of diffuse sound and listening tests". 
-%       Journal of the Audio Engineering Society, 54(1/2), pp.3-20. 
+%       Journal of the Audio Engineering Society, 54(1/2), pp.3-20.
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -72,10 +74,10 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 nSH = size(shir,2);
-pars.order = sqrt(nSH)-1;
+pars.maxOrder = sqrt(nSH)-1; 
 
 %%% Defaults/Warnings/Errors: 
-if ( (pars.order>1) && strcmp(pars.chOrdering, 'WXYZ') )
+if ( (pars.maxOrder>1) && strcmp(pars.chOrdering, 'WXYZ') )
     disp('Warning: WXYZ/FuMa is first-order only. Input signals have been truncated to first-order')
     pars.maxOrder = 1;
     nSH = int32((pars.maxOrder+1).^2);
@@ -93,7 +95,6 @@ elseif (length(pars.multires_winsize)~=length(pars.multires_xovers)+1)
 else
     nRes = length(pars.multires_winsize);
 end 
-
 
 %%% HO-SIRR
 disp('HOSIRR Configuration:'), pars %#ok
@@ -116,16 +117,16 @@ if pars.BROADBAND_FIRST_PEAK
     % find the index of highest peak in the omni
     [~, peak_ind] = max(abs(shir_tmp(:,1)).^2);
 
-    % calculate window 
+    % window 
     dirwinsize = 64;
     direct_win = zeros(lSig,1);
     direct_win(peak_ind-dirwinsize/2:peak_ind+dirwinsize/2,1) = hanning(dirwinsize+1);
-
+    
     % extract peak from shir
     shir_direct = repmat(direct_win, [1 nSH]).*shir;  
     shir_tmp = repmat(1-direct_win, [1 nSH]).*shir_tmp;  
 
-    shir = shir_tmp; % remove peak before running the main loop
+    shir = shir_tmp; % remove peak for the main loop
     clear shir_tmp
 end
 
@@ -144,14 +145,16 @@ nLS = size(ls_dirs_deg,1);
 vbap_gtable_res = [2 2]; % azi, elev, step sizes in degrees
 gtable = getGainTable(ls_dirs_deg, vbap_gtable_res); 
  
-% Sector design 
-[~,sec_dirs_rad] = getTdesign(2*(pars.order)); 
-A_xyz = computeVelCoeffsMtx(pars.order-1);
-[pars.sectorCoeffs, pars.normSec] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
-if pars.order~=1
-    pars.sectorDirs = sec_dirs_rad;
+% Sector design
+for order_i = 1:pars.maxOrder
+    [~,sec_dirs_rad] = getTdesign(2*(order_i)); 
+    A_xyz = computeVelCoeffsMtx(order_i-1);
+    [pars.sectorCoeffs{order_i}, pars.normSec{order_i}] = computeSectorCoeffs(order_i-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
+    if order_i~=1
+        pars.sectorDirs{order_i-1} = sec_dirs_rad;
+    end
 end 
-numSec = size(pars.sectorCoeffs,2)/4;
+maxNumSec = size(pars.sectorCoeffs{pars.maxOrder},2)/4;
 
 % divide signal to frequency regions
 if (nRes>1)
@@ -162,7 +165,7 @@ else
     shir_res = shir_pad;
 end
 clear insig_pad
-  
+
 % time-frequency processing for each frequency region
 maxfftsize = 2*maxWinsize; 
 lsir_res_ndiff = zeros(lSig + 2*maxfftsize + xover_order, nLS, nRes);
@@ -175,21 +178,21 @@ for nr = 1:nRes
     fftsize = 2*winsize; % double the window size for FD convolution
     hopsize = winsize/2; % half the window size time-resolution
     nBins_anl = winsize/2 + 1; % nBins used for analysis
-    nBins_syn = fftsize/2 + 1; % nBins used for synthesis 
-    centerfreqs_anl = (0:winsize/2)'*pars.fs/winsize;
-    if pars.BROADBAND_DIFFUSENESS
-        if nr==nRes
-            [~,maxDiffFreq_Ind] = min(abs(centerfreqs_anl-min(pars.maxDiffFreq_Hz)));
-        else
-            [~,maxDiffFreq_Ind] = min(abs(centerfreqs_anl-min(pars.maxDiffFreq_Hz,pars.multires_xovers(nr))));  
-        end 
-    end  
-    
+    nBins_syn = fftsize/2 + 1; % nBins used for synthesis
+    centrefreqs_anl = (0:winsize/2)'*pars.fs/winsize;
+    %centrefreqs_syn = (0:fftsize/2)'*pars.fs/fftsize;
+     
+    % frequency-dependent analysis/synthesis order
+    pars.orderPerBand_anl = findOrdersPerBand(centrefreqs_anl, pars.freqLimits, pars.procOrders);
+    pars.orderPerBand_syn = repelem(pars.orderPerBand_anl, 2);
+    pars.orderPerBand_syn = pars.orderPerBand_syn(1:end-1,1);
+    %pars.orderPerBand_syn = findOrdersPerBand(centrefreqs_syn, pars.freqLimits, pars.procOrders);
+     
     % storage for estimated parameters
-    analysis.azim{nr} = nan(nBins_anl, ceil(lSig/hopsize), numSec);
-    analysis.elev{nr} = nan(nBins_anl, ceil(lSig/hopsize), numSec);
-    analysis.energy{nr} = nan(nBins_anl, ceil(lSig/hopsize), numSec);
-    analysis.diff{nr} = nan(nBins_anl, ceil(lSig/hopsize), numSec);
+    analysis.azim{nr} = nan(nBins_anl, ceil(lSig/hopsize), maxNumSec); % NOT LONG ENOUGH!
+    analysis.elev{nr} = nan(nBins_anl, ceil(lSig/hopsize), maxNumSec);
+    analysis.energy{nr} = nan(nBins_anl, ceil(lSig/hopsize), maxNumSec);
+    analysis.diff{nr} = nan(nBins_anl, ceil(lSig/hopsize), maxNumSec);
      
     % extended energy analysis
     analysis.sf_energy{nr} = nan(ceil(lSig/hopsize),1);
@@ -199,33 +202,33 @@ for nr = 1:nRes
     % transform window (hanning)
     x = 0:(winsize-1);
     win = sin(x.*(pi/winsize))'.^2;
-      
+    
+    % maximum number of sectors
+    maxNSec = size(pars.sectorCoeffs{pars.maxOrder},2)/4;
+    
     % diffuse stream rendering intialisations
     switch pars.RENDER_DIFFUSE
         case 0
             % No diffuse stream
         case 1
-        % New SIRR diffuse stream, based on scaling the sector signals with diffuseness estimates
-        % and then re-encoding them into SHs, and then decoding them to the loudspeaker setup
-            if pars.order>1
-                Y_enc = sqrt(4*pi).*getRSH(pars.order, pars.sectorDirs*180/pi); % encoder
+            % New SIRR diffuse stream, based on scaling the sector signals with diffuseness estimates
+            % and then re-encoding them into SHs, and then decoding them to the loudspeaker setup
+            for order=1:pars.maxOrder 
+                if order>1 
+                    Y_enc{order} = sqrt(4*pi).*getRSH(order, pars.sectorDirs{order-1}*180/pi); %#ok
+                end
             end   
-            M_diff = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';   
+            M_diff = sqrt(4*pi/nLS).*getRSH(pars.maxOrder, ls_dirs_deg).';    
     end 
      
     % diffuseness averaging buffers 
-    if ~pars.BROADBAND_DIFFUSENESS
-        prev_intensity = zeros(nBins_anl,3,numSec);
-        prev_energy = zeros(nBins_anl,numSec);
-    else 
-        prev_intensity = zeros(3,numSec);
-        prev_energy = zeros(numSec,1);
-    end
-      
+    prev_intensity = zeros(nBins_anl,3,maxNSec);
+    prev_energy = zeros(nBins_anl,maxNSec,1);
+    
     % analysed parameters for each sector
-    azim = zeros(nBins_anl,numSec);
-    elev = zeros(nBins_anl,numSec);
-    diffs = zeros(nBins_anl,numSec); 
+    azim = zeros(nBins_anl,maxNSec);
+    elev = zeros(nBins_anl,maxNSec);
+    diffs = zeros(nBins_anl,maxNSec); 
     
     %%% Main processing loop
     idx = 1;
@@ -242,110 +245,121 @@ for nr = 1:nRes
         % Do analysis using only true resolution
         inspec_anl = inspec_syn(1:fftsize/winsize:end,:);
          
-        %%% SIRR ANALYSIS %%%
-        outspec_ndiff = 0;
-        outspec_diff = 0;
-        sectorCoeffs = pars.sectorCoeffs;   
-        WXYZ_ana = inspec_anl*sectorCoeffs; 
-        for n=1:numSec 
-            % form weighted pressure-velocity signals
-            WXYZ_sec = WXYZ_ana(:,4*(n-1) + (1:4));   
+        %%% SIRR ANALYSIS %%% 
+        for sectorOrder = 1:pars.maxOrder
+            % Loop through all orders (up to the max), and all sectors
+            sectorCoeffs_order = pars.sectorCoeffs{sectorOrder}; 
+            nSec_order = size(sectorCoeffs_order,2)/4;
             
-            % Compute Intensity vector for each frequency bin
-            I = real(conj(WXYZ_sec(:,1)*ones(1,3)) .* WXYZ_sec(:,2:4));  
-            [azim(:,n), elev(:,n)] = cart2sph(I(:,1), I(:,2), I(:,3));  
-                 
-            if pars.BROADBAND_DIFFUSENESS
-                % Compute broad-band active-intensity vector
-                pvCOV = (WXYZ_sec(1:maxDiffFreq_Ind,:)'*WXYZ_sec(1:maxDiffFreq_Ind,:)); 
-                I_diff = real(pvCOV(2:4,1)); 
-                energy = 0.5.*trace(pvCOV);  
+            % Find frequency-bins corresponding to current analysis order:
+            bins4sectorOrder_anl = pars.orderPerBand_anl==sectorOrder;
+            
+            % Sector beamforming
+            WXYZ_ana = inspec_anl(bins4sectorOrder_anl,1:(sectorOrder+1)^2)*sectorCoeffs_order; 
+            
+            for n=1:nSec_order 
+                % Compute sector sound-field energy
+                WXYZ_sec = WXYZ_ana(:,4*(n-1) + (1:4)); 
+                energy = 0.5.*sum(abs(WXYZ_sec).^2,2); % 
 
-                % Estimating and time averaging of boadband diffuseness
-                diff_intensity = (1-pars.alpha_diff).*I_diff + pars.alpha_diff.*prev_intensity(:,n);
-                diff_energy = (1-pars.alpha_diff).*energy + pars.alpha_diff.*prev_energy(n); 
-                prev_intensity(:,n) = diff_intensity;
-                prev_energy(n) = diff_energy; 
-                diffs(:,n) = 1 - sqrt(sum(diff_intensity.^2)) ./ (diff_energy + eps); 
-            else  
-                energy = 0.5.*sum(abs(WXYZ_sec).^2,2); 
-            
+                % Frequency-dependent instantanious DoA estimation
+                I = real(conj(WXYZ_sec(:,1)*ones(1,3)) .* WXYZ_sec(:,2:4));
+                [azim(bins4sectorOrder_anl,n), elev(bins4sectorOrder_anl,n)] = cart2sph(I(:,1), I(:,2), I(:,3)); 
+ 
                 % Time averaging of intensity-vector for the diffuseness
-                % estimate per bin
-                diff_intensity = (1-pars.alpha_diff).*I + pars.alpha_diff.*prev_intensity(:,:,n);
-                diff_energy = (1-pars.alpha_diff).*energy + pars.alpha_diff.*prev_energy(:,n); 
-                diffs(:,n) = 1 - sqrt(sum(diff_intensity.^2,2)) ./ (diff_energy + eps); 
-                prev_intensity(:,:,n) = diff_intensity;
-                prev_energy(:,n) = diff_energy;
-                %assert(all(diffs(:,n)<=1.001))
-                %assert(all(diffs(:,n)>=0))
+                % estimate
+                diff_intensity = (1-pars.alpha_diff).*I + pars.alpha_diff.*prev_intensity(bins4sectorOrder_anl,:,n);
+                diff_energy = (1-pars.alpha_diff).*energy + pars.alpha_diff.*prev_energy(bins4sectorOrder_anl,n); 
+                diffs(bins4sectorOrder_anl,n) = 1 - sqrt(sum(diff_intensity.^2,2)) ./ (diff_energy + 2e-10); 
+                prev_intensity(bins4sectorOrder_anl,:,n) = diff_intensity;
+                prev_energy(bins4sectorOrder_anl,n) = diff_energy;
+                %assert(all(diffs(bins4sectorOrder_anl,n)<=1.001))
+                %assert(all(diffs(bins4sectorOrder_anl,n)>=0))
+
+                % storage for estimated parameters over time
+                analysis.azim{nr}(bins4sectorOrder_anl,framecount,n) = azim(bins4sectorOrder_anl,n);
+                analysis.elev{nr}(bins4sectorOrder_anl,framecount,n) = elev(bins4sectorOrder_anl,n);
+                analysis.energy{nr}(bins4sectorOrder_anl,framecount,n) = energy;
+                analysis.diff{nr}(bins4sectorOrder_anl,framecount,n) = diffs(bins4sectorOrder_anl,n); 
             end 
 
-            % storage for estimated parameters over time
-            analysis.azim{nr}(:,framecount,n) = azim(:,n);
-            analysis.elev{nr}(:,framecount,n) = elev(:,n);
-            analysis.energy{nr}(:,framecount,n) = energy;
-            analysis.diff{nr}(:,framecount,n) = diffs(:,n); 
-        end 
-        
-        %%% SIRR SYNTHESIS %%% 
-        if pars.RENDER_DIFFUSE
-            W_diff = zeros(nBins_syn, numSec); 
         end
-        W_syn = zeros(nBins_syn, numSec); 
-        sectorCoeffs = pars.sectorCoeffs./sqrt(4*pi);   
-        for n=1:numSec  
-             
-            % NON-DIFFUSE PART
-            ndiffs_sqrt = sqrt(1-diffs(:,n)); 
+        
+        %%% SIRR SYNTHESIS %%%  
+        outspec_ndiff = zeros(nBins_syn,nLS); 
+        outspec_diff  = zeros(nBins_syn,nLS);  
+        for sectorOrder = 1:pars.maxOrder
+            % Loop through all orders (up to the max), and all sectors
+            sectorCoeffs_order = pars.sectorCoeffs{sectorOrder}./sqrt(4*pi);  
+            nSec_order = size(sectorCoeffs_order,2)/4;
+            nSH_sec = (sectorOrder+1).^2;
             
-            % Gain factor computation
-            eleindex = round((elev(:,n)*180/pi+90)/vbap_gtable_res(2));
-            aziindex = round(mod(azim(:,n)*180/pi+180,360)/vbap_gtable_res(1));
-            index = aziindex + (eleindex*181) + 1;
-            gains = gtable(index,:);  
-            
-            % Interpolate the gains in frequency for proper convolution
-            if pars.RENDER_DIFFUSE
-                ndiffgains = gains .* (ndiffs_sqrt*ones(1,nLS)); 
-            else
-                ndiffgains = gains; 
-            end
-            
-            % Interpolate panning filters 
-            ndiffgains = interpolateFilters(permute(ndiffgains, [3 2 1]), fftsize);
-            ndiffgains = permute(ndiffgains, [3 2 1]);
+            % Find frequency-bins corresponding to current synthesis/analysis order:
+            bins4sectorOrder_anl = pars.orderPerBand_anl==sectorOrder; 
+            bins4sectorOrder_syn = pars.orderPerBand_syn==sectorOrder;
+           
+            for n=1:nSec_order   
+                % NON-DIFFUSE PART
+                ndiffs_sqrt = sqrt(1-diffs(bins4sectorOrder_anl,n)); 
 
-            % Normalisation term
-            nnorm = sqrt(pars.normSec);
-            
-            % generate non-diffuse stream
-            W_syn(:,n) = inspec_syn*sectorCoeffs(:, 4*(n-1) + 1);
-            outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*W_syn(:,n)*ones(1,nLS));
-    
-            % DIFFUSE PART
-            switch pars.RENDER_DIFFUSE
-                case 0
-                    % No diffuse-field rendering
-                case 1
-                    % New SIRR diffuse stream rendering, based on re-encoding the 
-                    % sector signals scaled with the diffuseness estimates
-                    diffgains = sqrt(diffs(:,n));  
-                    diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
-                    diffgains = permute(diffgains, [3 2 1]); 
-                    if pars.order == 1
-                        a_diff = repmat(diffgains, [1 nSH]).*inspec_syn./sqrt(nSH);
-                    else
-                        W_diff(:, n) = diffgains .* W_syn(:,n); 
-                    end
+                % Gain factor computation
+                eleindex = round((elev(bins4sectorOrder_anl,n)*180/pi+90)/vbap_gtable_res(2));
+                aziindex = round(mod(azim(bins4sectorOrder_anl,n)*180/pi+180,360)/vbap_gtable_res(1));
+                index = aziindex + (eleindex*181) + 1;
+                gains = gtable(index,:);
+
+                % Interpolate the gains in frequency for proper convolution
+                ndiffgains = zeros(nBins_anl,nLS); 
+                if pars.RENDER_DIFFUSE
+                    ndiffgains(bins4sectorOrder_anl,:) = gains .* (ndiffs_sqrt*ones(1,nLS)); 
+                else
+                    ndiffgains(bins4sectorOrder_anl,:) = gains; 
+                end
+
+                % Interpolate panning filters 
+                %ndiffgains = interpolateFilters(permute(ndiffgains, [3 2 1]), fftsize);
+                %ndiffgains = permute(ndiffgains, [3 2 1]);
+                ndiffgains_tmp(1:2:nBins_syn,:) = ndiffgains;
+                ndiffgains_tmp(2:2:nBins_syn,:) = ndiffgains(1:end-1,:);
+                ndiffgains = ndiffgains_tmp;
+                
+                % Normalisation term
+                nnorm = sqrt(pars.normSec{sectorOrder});
+
+                % generate non-diffuse stream
+                W_syn = inspec_syn(bins4sectorOrder_syn,1:(sectorOrder+1)^2)*sectorCoeffs_order(:, 4*(n-1) + 1);
+                outspec_ndiff(bins4sectorOrder_syn,:) = outspec_ndiff(bins4sectorOrder_syn,:) + ...
+                        ndiffgains(bins4sectorOrder_syn,:) .* (nnorm.*W_syn*ones(1,nLS));
+
+                % DIFFUSE PART
+                switch pars.RENDER_DIFFUSE
+                    case 0
+                        % No diffuse-field rendering
+                    case 1
+                        % New SIRR diffuse stream rendering, based on re-encoding the 
+                        % sector signals, after being scaled with the diffuseness estimates
+                        diffgains = zeros(nBins_anl,1); 
+                        diffgains(bins4sectorOrder_anl,:) = sqrt(diffs(bins4sectorOrder_anl,n));  
+                        %diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
+                        %diffgains = permute(diffgains, [3 2 1]); 
+                        diffgains_tmp(1:2:nBins_syn,:) = diffgains;
+                        diffgains_tmp(2:2:nBins_syn,:) = diffgains(1:end-1,:);
+                        diffgains = diffgains_tmp;
+                        
+                        if sectorOrder == 1 
+                            a_diff = repmat(diffgains(bins4sectorOrder_syn,:), [1 nSH_sec]).* ...
+                                inspec_syn(bins4sectorOrder_syn,1:(sectorOrder+1)^2)./sqrt(nSH_sec);
+                        else
+                            W_diff = diffgains(bins4sectorOrder_syn,1) .* W_syn; 
+                            a_diff = W_diff./sqrt(nSec_order) * Y_enc{sectorOrder}(:,n).'; % 
+                        end
+                        
+                        outspec_diff(bins4sectorOrder_syn,:) = outspec_diff(bins4sectorOrder_syn,:) + ...
+                               a_diff * M_diff(:,1:(sectorOrder+1)^2).';  
+                         
+                end  
             end  
         end 
-        if pars.RENDER_DIFFUSE
-            if pars.order > 1
-                a_diff = W_diff./sqrt(numSec) * Y_enc.'; 
-            end % encode 
-            outspec_diff = a_diff * M_diff.'; % decode
-        end
         
         % decorrelation based on randomising the phase
         if isequal(pars.decorrelationType, 'phase')
@@ -353,17 +367,17 @@ for nr = 1:nRes
             outspec_diff = abs(outspec_diff) .* exp(1i*randomPhi);
         end  
         
-        analysis.sf_energy{nr}(framecount,1) = mean(sum(abs(inspec_syn).^2/nSH,2)); 
+        analysis.sf_energy{nr}(framecount,1) = mean(sum(abs(inspec_syn).^2/nSH,2));
         analysis.ndiff_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff).^2,2)); 
         analysis.diff_energy{nr}(framecount,1) = mean(sum(abs(outspec_diff).^2,2));
-         
-        % ambi_ = mean(sum(abs(a_diff).^2,2)); 
+        
+%         ambi_ = mean(sum(abs(a_diff).^2,2)); 
 %         sf_ = analysis.sf_energy{nr}(framecount,1); 
 %         ndiff_ = analysis.ndiff_energy{nr}(framecount,1);
 %         diff_ = analysis.diff_energy{nr}(framecount,1);
 %         werew=(diff_+ndiff_)/sf_;
 %         asfadsfwerew=(diff_+ndiff_)-sf_;
-%          
+         
         % overlap-add synthesis
         lsir_win_ndiff = real(ifft([outspec_ndiff; conj(outspec_ndiff(end-1:-1:2,:))]));
         lsir_res_ndiff(idx+(0:fftsize-1),:,nr) = lsir_res_ndiff(idx+(0:fftsize-1),:,nr) + lsir_win_ndiff;
@@ -381,6 +395,9 @@ for nr = 1:nRes
         end  
     end
     fprintf('\ndone\n')
+    
+    % clean up
+    clear sectorDirs_order sectorCoeffs_order
     
     % remove delay caused by the filter interpolation of gains and circular shift
     tempout = zeros(size(lsir_res_ndiff(:,:,nr)));
@@ -409,9 +426,9 @@ end
 if isequal(pars.decorrelationType, 'noise') && pars.RENDER_DIFFUSE
     % we want to apply just enough noise-based reverberation as 
     % to suitably decorrelate the signals, but not change the captured room 
-    % characteristics too much. T60s of a very, very dry room should suffice for
+    % characteristics. T60s of a very, very dry room should suffice for
     % this task:
-    %t60 = [0.07 0.07 0.06 0.04 0.02 0.01];
+    %t60 = [0.07 0.07 0.06 0.04 0.01 0.01];
     t60 = [0.2 0.2 0.16 0.12 0.09 0.04];
     fc = [125 250 500 1e3 2e3 4e3];
     randmat =  synthesizeNoiseReverb(nLS, pars.fs, t60, fc, 1); 
@@ -427,7 +444,7 @@ if pars.BROADBAND_FIRST_PEAK
         shir_direct(:,2).'./sqrt(3);
         shir_direct(:,3).'./sqrt(3);].';   
     I = real(repmat(conj(shir_direct_WXYZ(:,1)),[1 3]).*shir_direct_WXYZ(:,2:4));
-    I = sum(I); 
+    I = sum(I);  
     [dir_azim, dir_elev] = cart2sph(I(1,1), I(1,2), I(1,3));
 
     % Gain factor computation
@@ -436,7 +453,9 @@ if pars.BROADBAND_FIRST_PEAK
     index = aziindex + (eleindex*181) + 1;
     dir_gains = gtable(index,:);
 
-    lsir_ndiff = lsir_ndiff + dir_gains .* (shir_direct(:,1)*ones(1,nLS)); 
+    % Add the first peak 
+    lsir_ndiff = lsir_ndiff + dir_gains .* (shir_direct(:,1)*ones(1,nLS));
+
 end 
 
 if pars.RENDER_DIFFUSE
@@ -686,4 +705,11 @@ end
 
 end
  
- 
+
+
+
+
+
+
+
+
