@@ -8,7 +8,7 @@ The idea is that you then convolve a monophonic source with this loudspeaker arr
 
 ![](SIRR_vs_Ambi_vs_Reference.png)
 
-The above image depicts energy spectrograms of a 64-channel loudspeaker array RIR, rendered using different methods/configurations using the included 'plot_mch_energy.m' script. Here, it can be observed that renderings using the HO-SIRR method more closely resembles the reference with increasing input order, and that it also performs visibly better than Ambisonics (MMD). 
+The above image depicts energy spectrograms of a 64-channel loudspeaker array RIR, rendered using different methods/configurations using the included 'plot_mch_energy.m' script. Here, it can be observed that the renderings using HO-SIRR more closely resembles the reference with increasing input order. It also performs visibly better than Ambisonics (MMD). 
 
 ## Getting Started
 
@@ -40,12 +40,12 @@ pars.maxDiffFreq_Hz = 3e3;        % frequency up to which to estimate the diffus
 pars.alpha_diff = 0.5;            % diffuseness averaging coefficient (one-pole filter)
 
 % Optionally, the highest peak of the response may be isolated and panned 
-% using a broad-band DoA estimates, which can reduce timbral colourations
+% using a broad-band DoA estimate, which can reduce timbral colourations
 % in some cases
 pars.BROADBAND_FIRST_PEAK = 1;    % 0: disabled, 1: enabled 
 ```
 
-The input Ambisonic RIR may be rendered for your loudspeaker set-up as:
+The input Ambisonic RIR may then be rendered for your loudspeaker set-up as:
 
 ```
 pars.chOrdering = 'ACN'; % 'ACN', or 'WXYZ'  
