@@ -44,7 +44,7 @@ ir_length = size(ref_ls_rir, 1);
 nLS = size(ref_ls_rir, 2);
 output = matrixConvolver(input_stimulus, reshape(ref_ls_rir, [ir_length, 1, nLS]), size(input_stimulus,1));
 output = 0.99.*output./max(abs(output(:)));
-audiowrite('BFormatDemo_reference.wav', output, fs);
+audiowrite('BFormatDemo_reference.wav', output, fs, 'BitsPerSample', 24);
 
 % encode into the spherical harmonic domain
 sh_rir = ref_ls_rir * sqrt(4*pi/nLS) * getRSH(demo_order, ls_dirs_deg)'; 
@@ -113,6 +113,8 @@ ir_length = size(sirr_ls_rir, 1);
 nLS = size(sirr_ls_rir, 2);  
 output = matrixConvolver(input_stimulus, reshape(sirr_ls_rir, [ir_length, 1, nLS]), size(input_stimulus,1));
 output = 0.99.*output./max(abs(output(:))); % normalise
-audiowrite(['BFormatDemo_HOSIRR_o' num2str(demo_order) '.wav'], output, fs);
+audiowrite(['BFormatDemo_HOSIRR_o' num2str(demo_order) '.wav'], output, fs, 'BitsPerSample', 24);
+
+ 
 
 

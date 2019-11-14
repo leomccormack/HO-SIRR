@@ -68,7 +68,7 @@ ir_length = size(ref_ls_rir, 1);
 nLS = size(ref_ls_rir, 2);
 output = matrixConvolver(input_stimulus, reshape(ref_ls_rir, [ir_length, 1, nLS]), size(input_stimulus,1));
 output = 0.99.*output./max(abs(output(:)));
-audiowrite('Eigenmike32Demo_reference.wav', output, fs);
+audiowrite('Eigenmike32Demo_reference.wav', output, fs, 'BitsPerSample', 24);
 
 % We then simulate an Eigenmike32, deriving the theoretical array transfer 
 % functions for each loudspeaker direction in the DTU set-up
@@ -168,7 +168,7 @@ ir_length = size(sirr_ls_rir, 1);
 nLS = size(sirr_ls_rir, 2);  
 output = matrixConvolver(input_stimulus, reshape(sirr_ls_rir, [ir_length, 1, nLS]), size(input_stimulus,1));
 output = 0.99.*output./max(abs(output(:))); % normalise
-audiowrite(['Eigenmike32Demo_HOSIRR_o' num2str(demo_order) '.wav'], output, fs);
+audiowrite(['Eigenmike32Demo_HOSIRR_o' num2str(demo_order) '.wav'], output, fs, 'BitsPerSample', 24);
 
 % The reference and HOSIRR renderings may then be compared over headphones using
 % e.g. the free sparta_binauraliser VST plug-in [4] (which has a DTU setup preset).  
@@ -233,5 +233,6 @@ ir_length = size(sirr_ls_rir, 1);
 nLS = size(sirr_ls_rir, 2);  
 output = matrixConvolver(input_stimulus, reshape(sirr_ls_rir, [ir_length, 1, nLS]), size(input_stimulus,1));
 output = 0.99.*output./max(abs(output(:))); % normalise
-audiowrite(['Eigenmike32Demo_HOSIRR_o' num2str(demo_order) 'orderPerBand.wav'], output, fs);
+audiowrite(['Eigenmike32Demo_HOSIRR_o' num2str(demo_order) 'orderPerBand.wav'], output, fs, 'BitsPerSample', 24);
 
+ 

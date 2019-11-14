@@ -40,7 +40,7 @@ load('DTU_ls_dirs_deg.mat')
 nLS = size(ls_dirs_deg,1);
 input_sh_rir = ref_ls_rir * sqrt(4*pi/nLS) * getRSH(input_order, ls_dirs_deg)'; 
 input_sh_rir = 0.99.*input_sh_rir./max(abs(input_sh_rir(:)));
-audiowrite(['UpmixingDemo_HOSIRR_input_o' num2str(input_order) '.wav'], input_sh_rir, fs);
+audiowrite(['UpmixingDemo_HOSIRR_input_o' num2str(input_order) '.wav'], input_sh_rir, fs, 'BitsPerSample', 24);
 clear ls_dirs_deg;
 
 
@@ -94,5 +94,5 @@ tic, sirr_ls_rir = HOSIRR(input_sh_rir, pars); toc
 nLS = size(pars.ls_dirs_deg,1);
 output_sh_rir = sirr_ls_rir * sqrt(4*pi/nLS) * getRSH(output_order, pars.ls_dirs_deg)'; 
 output_sh_rir = 0.99.*output_sh_rir./max(abs(output_sh_rir(:)));
-audiowrite(['UpmixingDemo_HOSIRR_input_o' num2str(input_order) '_output_o' num2str(output_order) '.wav'], output_sh_rir, fs);
+audiowrite(['UpmixingDemo_HOSIRR_input_o' num2str(input_order) '_output_o' num2str(output_order) '.wav'], output_sh_rir, fs, 'BitsPerSample', 24);
  

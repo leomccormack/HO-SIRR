@@ -5,6 +5,8 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR_orderPerBand(shi
 % Unlike "HOSIRR.m", this version supports frequency-dependent decoding
 % orders.
 % 
+% Please note, this version is incomplete and experimental.
+%
 % DEPENDENCES
 %   Spherical-Harmonic-Transform Matlab library
 %       https://github.com/polarch/Spherical-Harmonic-Transform
