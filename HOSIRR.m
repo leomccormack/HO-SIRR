@@ -205,12 +205,15 @@ for nr = 1:nRes
         case 0
             % No diffuse stream
         case 1
-        % New SIRR diffuse stream, based on scaling the sector signals with diffuseness estimates
-        % and then re-encoding them into SHs, and then decoding them to the loudspeaker setup
-            if pars.order>1
-                Y_enc = sqrt(4*pi).*getRSH(pars.order, pars.sectorDirs*180/pi); % encoder
-            end   
-            M_diff = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';   
+            % New SIRR diffuse stream, based on scaling the sector signals 
+            % with diffuseness estimates and then re-encoding them into 
+            % SHs, and then decoding them to the loudspeaker setup
+            if pars.order==1
+                D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';   
+            else 
+                Y_enc = sqrt(4*pi).*getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
+                D_ls = sqrt(4*pi/nLS).*getRSH(pars.order-1, ls_dirs_deg).';   
+            end    
     end 
      
     % diffuseness averaging buffers 
@@ -245,11 +248,11 @@ for nr = 1:nRes
         %%% SIRR ANALYSIS %%%
         outspec_ndiff = 0;
         outspec_diff = 0;
-        sectorCoeffs = pars.sectorCoeffs;   
-        WXYZ_ana = inspec_anl*sectorCoeffs; 
+        W_S = pars.sectorCoeffs;   
+        s_ana = inspec_anl*W_S; 
         for n=1:numSec 
-            % form weighted pressure-velocity signals
-            WXYZ_sec = WXYZ_ana(:,4*(n-1) + (1:4));   
+            % weighted pressure-velocity signals for this sector
+            WXYZ_sec = s_ana(:,4*(n-1) + (1:4));   
             
             % Compute Intensity vector for each frequency bin
             I = real(conj(WXYZ_sec(:,1)*ones(1,3)) .* WXYZ_sec(:,2:4));  
@@ -290,10 +293,10 @@ for nr = 1:nRes
         
         %%% SIRR SYNTHESIS %%% 
         if pars.RENDER_DIFFUSE
-            W_diff = zeros(nBins_syn, numSec); 
+            z_diff = zeros(nBins_syn, numSec); 
         end
-        W_syn = zeros(nBins_syn, numSec); 
-        sectorCoeffs = pars.sectorCoeffs./sqrt(4*pi);   
+        z_00 = zeros(nBins_syn, numSec); 
+        W_S = pars.sectorCoeffs./sqrt(4*pi);   
         for n=1:numSec  
              
             % NON-DIFFUSE PART
@@ -320,8 +323,8 @@ for nr = 1:nRes
             nnorm = sqrt(pars.normSec);
             
             % generate non-diffuse stream
-            W_syn(:,n) = inspec_syn*sectorCoeffs(:, 4*(n-1) + 1);
-            outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*W_syn(:,n)*ones(1,nLS));
+            z_00(:,n) = inspec_syn*W_S(:, 4*(n-1) + 1);
+            outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*z_00(:,n)*ones(1,nLS));
     
             % DIFFUSE PART
             switch pars.RENDER_DIFFUSE
@@ -336,15 +339,15 @@ for nr = 1:nRes
                     if pars.order == 1
                         a_diff = repmat(diffgains, [1 nSH]).*inspec_syn./sqrt(nSH);
                     else
-                        W_diff(:, n) = diffgains .* W_syn(:,n); 
+                        z_diff(:, n) = diffgains .* z_00(:,n); 
                     end
             end  
         end 
         if pars.RENDER_DIFFUSE
             if pars.order > 1
-                a_diff = W_diff./sqrt(numSec) * Y_enc.'; 
+                a_diff = z_diff./sqrt(numSec) * Y_enc.'; 
             end % encode 
-            outspec_diff = a_diff * M_diff.'; % decode
+            outspec_diff = a_diff * D_ls.'; % decode
         end
         
         % decorrelation based on randomising the phase
