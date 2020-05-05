@@ -84,7 +84,7 @@ pars.multires_xovers = [];
 %pars.multires_xovers = [500, 2e3];  
 pars.RENDER_DIFFUSE = 1;
 pars.BROADBAND_FIRST_PEAK = 1;    
-pars.BROADBAND_DIFFUSENESS = 0;
+pars.BROADBAND_DIFFUSENESS = 1;
 pars.maxDiffFreq_Hz = 3000;
 pars.decorrelationType = 'noise';  
 pars.alpha_diff = 0.5; 
@@ -183,6 +183,11 @@ s = createSynthesisStruct('lspLocs',ls_dirs_deg_w_r,'snfft',length(P) ,...
     'ShowArray',false,'fs',fs,'c',343,...
     'LFEchannel',[]); 
 sdmir = synthesizeSDMCoeffs(P,DOA, s); 
+
+% figure, subplot(2,1,1)
+% plot(shir(1:end/8,1)), title('input pressure')
+% subplot(2,1,2)
+% plot(sum(sdmir(1:end/8,:),2)), title('combined response')
 
 % apply same post-processing as with the reference
 e_sdmir=filter(blp,alp,sdmir.^2);
