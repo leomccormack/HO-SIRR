@@ -174,8 +174,8 @@ shir(:, 2:4) = shir(:, 2:4)./sqrt(3); % convert from N3D to SN3D normalisation
 
 % configure and apply SDM 
 % (note that these values were taken from the b-format demo script in the 
-% SDM toolbox)
-a = createSDMStruct('DefaultArray','Bformat','fs',fs,'winLen',15);
+% SDM toolbox) - Except a window length of 1, instead of 15
+a = createSDMStruct('DefaultArray','Bformat','fs',fs,'winLen',1);
 DOA = SDMbf(shir, a); 
 P = shir(:,1);
 ls_dirs_deg_w_r = [ls_dirs_deg ones(size(ls_dirs_deg,1),1)]; % add radius

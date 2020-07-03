@@ -5,6 +5,8 @@
 %
 % Leo McCormack, 22/09/2018, leo.mccormack@aalto.fi
 
+addpath('_Simulated_Rooms_')
+
 %% FIRST-ORDER SIRR EXAMPLE USING A-FORMAT MIC
 
 
@@ -20,21 +22,24 @@
 %% HO-SIRR COMPARED WITH REFERENCE AND AMBISONICS
 % A simulated Auditorium using LoRA, configured for a 36point t-design
 % loudspeaker array [1].
-LS_REFERENCE_FILE_NAME = 'Auditorium_36_Tdesign'; 
+LS_REFERENCE_FILE_NAME = 'Auditorium_64ch_DTU_AVIL'; 
 
 % USER PARAMETERS
 pars.order = 3; 
 pars.fs = 48e3; 
 [~,dirs_rad] = getTdesign(8);
-pars.ls_dirs_deg = dirs_rad*180/pi;    
+pars.ls_dirs_deg = dirs_rad*180/pi;  
+load('DTU_ls_dirs_deg.mat')
+pars.ls_dirs_deg = ls_dirs_deg;
 pars.multires_winsize = [256];  
 pars.multires_xovers = [];   
 pars.RENDER_DIFFUSE = 1;
-pars.BROADBAND_DIRECT = 1;   
+pars.BROADBAND_FIRST_PEAK = 1;   
 pars.nBroadbandPeaks = 1;    
 pars.decorrelationType = 'noise'; 
-pars.maxDiffuseAnalysis_Hz = 6e3;  
-pars.alpha_diff = 0.975;
+pars.BROADBAND_DIFFUSENESS = 1;
+pars.maxDiffFreq_Hz = 3000;  
+pars.alpha_diff = 0.5;
 pars.chOrdering = 'ACN';
 pars.normScheme = 'N3D';
 
@@ -43,7 +48,7 @@ pars.normScheme = 'N3D';
 shir = refir * (sqrt(4*pi).*getRSH(pars.order, pars.ls_dirs_deg)');
 
 % APPLY HO-SIRR
-[sirr,sirr_ndiff,sirr_diff,pars,~] = HOSIRR(shir, pars, 0);
+[sirr,sirr_ndiff,sirr_diff,pars,~] = HOSIRR(shir, pars);
 audiowrite([LS_REFERENCE_FILE_NAME '_HOSIRR_o' num2str(pars.order) '.wav'], 0.3.*sirr, fs);
 
 % AMBISONICS
@@ -79,17 +84,19 @@ pars.ls_dirs_deg = dirs_rad*180/pi;
 pars.multires_winsize = 256;  
 pars.multires_xovers = [];   
 pars.RENDER_DIFFUSE = 1;
+pars.BROADBAND_FIRST_PEAK = 1;   
+pars.nBroadbandPeaks = 1;    
 pars.decorrelationType = 'noise'; 
-pars.BROADBAND_DIRECT = 0;     
-pars.maxDiffuseAnalysis_Hz = 6e3;  
-pars.alpha_diff = 0.975;
+pars.BROADBAND_DIFFUSENESS = 1;
+pars.maxDiffFreq_Hz = 3000;  
+pars.alpha_diff = 0.5;
 pars.chOrdering = 'ACN';
 pars.normScheme = 'N3D';
 
 % --- Single plane-wave input --- 
 src_dir = [-45 -45];  % try adding more than 1 plane-wave, to see the first-order analysis break
 shir = randn(pars.fs, size(src_dir,1)) * (sqrt(4*pi).*getRSH(pars.order, src_dir)).';
-[~,~,~,~,analysis] = HOSIRR(shir, pars, 0);
+[~,~,~,~,analysis] = HOSIRR(shir, pars);
 
 % In this case, we would expect:
 % - [azimuth elevation] should correspond to 'src_dir'  
@@ -110,7 +117,7 @@ figure, plot(analysis.diff{1}(1,:)), title('diffuseness'), grid on, ylim([0 1])
 % --- Diffuse input --- 
 [~, diff_dirs] = getTdesign(21); % approximate diffuse-field with 240 incoherent noise sources
 shir = randn(pars.fs, size(diff_dirs,1)) * (sqrt(4*pi).*getRSH(pars.order, diff_dirs*180/pi)).';
-[~,~,~,~,analysis] = HOSIRR(shir, pars, 0);
+[~,~,~,~,analysis] = HOSIRR(shir, pars);
 
 % In this case, we would expect:
 % - [azimuth elevation] should be random 
@@ -139,10 +146,12 @@ pars.ls_dirs_deg = dirs_rad*180/pi;
 pars.multires_winsize = 256;  
 pars.multires_xovers = [];   
 pars.RENDER_DIFFUSE = 1;
+pars.BROADBAND_FIRST_PEAK = 1;   
+pars.nBroadbandPeaks = 1;    
 pars.decorrelationType = 'noise'; 
-pars.BROADBAND_DIRECT = 0;     
-pars.maxDiffuseAnalysis_Hz = 6e3;  
-pars.alpha_diff = 0.975;
+pars.BROADBAND_DIFFUSENESS = 1;
+pars.maxDiffFreq_Hz = 3000;  
+pars.alpha_diff = 0.5;
 pars.chOrdering = 'ACN';
 pars.normScheme = 'N3D';
 
@@ -204,11 +213,12 @@ pars.ls_dirs_deg = dirs_rad*180/pi;
 pars.multires_winsize = 128;  
 pars.multires_xovers = [];   
 pars.RENDER_DIFFUSE = 1;
+pars.BROADBAND_FIRST_PEAK = 1;   
+pars.nBroadbandPeaks = 1;    
 pars.decorrelationType = 'noise'; 
-pars.BROADBAND_FIRST_PEAK = 1;      
 pars.BROADBAND_DIFFUSENESS = 1;
-pars.maxDiffFreq_Hz = 3000;
-pars.alpha_diff = 0.975;
+pars.maxDiffFreq_Hz = 3000;  
+pars.alpha_diff = 0.5;
 pars.chOrdering = 'ACN';
 pars.normScheme = 'N3D';
 
