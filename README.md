@@ -73,16 +73,19 @@ This code is provided under the [BSD 3-clause license](https://opensource.org/li
 
 ## References 
 
-[1] McCormack, L., Politis, A., Scheuregger, O., and Pulkki, V. (2019). "**Higher-order processing of spatial impulse responses**".
+[1] McCormack, L., Pulkki, V., Politis, A., Scheuregger, O. and Marschall, M., (2020). [**"Higher-Order Spatial Impulse Response Rendering: Investigating the Perceived Effects of Spherical Order, Dedicated Diffuse Rendering, and Frequency Resolution"**](docs/mccormack2020higher). 
+Journal of the Audio Engineering Society, 68(5), pp.338-354.
+
+[2] McCormack, L., Politis, A., Scheuregger, O., and Pulkki, V. (2019). ["**Higher-order processing of spatial impulse responses**"](docs/mccormack2019higher).
 In Proceedings of the 23rd International Congress on Acoustics, 9--13 September 2019 in Aachen, Germany.
 
-[2] Politis, A. and Pulkki, V., 2016. "**Acoustic intensity, energy-density and diffuseness estimation in a directionally-constrained region**". 
+[3] Politis, A. and Pulkki, V., 2016. "**Acoustic intensity, energy-density and diffuseness estimation in a directionally-constrained region**". 
 arXiv preprint arXiv:1609.03409.
 
-[3] Merimaa, J. and Pulkki, V., 2005. "**Spatial impulse response rendering I: Analysis and synthesis**". 
+[4] Merimaa, J. and Pulkki, V., 2005. "**Spatial impulse response rendering I: Analysis and synthesis**". 
 Journal of the Audio Engineering Society, 53(12), pp.1115-1127.
 
-[4] Pulkki, V. and Merimaa, J., 2006. "**Spatial impulse response rendering II: Reproduction of diffuse sound and listening tests**". 
+[5] Pulkki, V. and Merimaa, J., 2006. "**Spatial impulse response rendering II: Reproduction of diffuse sound and listening tests**". 
 Journal of the Audio Engineering Society, 54(1/2), pp.3-20.
 
-[5] Favrot, S. and Buchholz, J.M., 2010. "**LoRA: A loudspeaker-based room auralization system. Acta Acustica united with Acustica**", 96(2),  pp.364-375.
+[6] Favrot, S. and Buchholz, J.M., 2010. "**LoRA: A loudspeaker-based room auralization system. Acta Acustica united with Acustica**", 96(2),  pp.364-375.

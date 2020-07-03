@@ -48,17 +48,22 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars)
 %                                .energy and diffuseness (.diff) estimates
 %
 % REFERENCES
-%   [1] McCormack, L., Politis, A., Scheuregger, O., and Pulkki, V. 2019. 
+%   [1] McCormack, L., Pulkki, V., Politis, A., Scheuregger, O. and Marschall,
+%       M., (2020). "Higher-Order Spatial Impulse Response Rendering:
+%       Investigating the Perceived Effects of Spherical Order, Dedicated
+%       Diffuse Rendering, and Frequency Resolution". Journal of the Audio
+%       Engineering Society, 68(5), pp.338-354.
+%   [2] McCormack, L., Politis, A., Scheuregger, O., and Pulkki, V. 2019.
 %       "Higher-order processing of spatial impulse responses". In 
 %       Proceedings of the 23rd International Congress on Acoustics, 
 %       9--13 September 2019 in Aachen, Germany.
-%   [2] Politis, A. and Pulkki, V., 2016. "Acoustic intensity, energy-
+%   [3] Politis, A. and Pulkki, V., 2016. "Acoustic intensity, energy-
 %       density and diffuseness estimation in a directionally-constrained 
 %       region". arXiv preprint arXiv:1609.03409.
-%   [3] Merimaa, J. and Pulkki, V., 2005. "Spatial impulse response 
+%   [4] Merimaa, J. and Pulkki, V., 2005. "Spatial impulse response
 %       rendering I: Analysis and synthesis". Journal of the Audio 
 %       Engineering Society, 53(12), pp.1115-1127.
-%   [4] Pulkki, V. and Merimaa, J., 2006. "Spatial impulse response 
+%   [5] Pulkki, V. and Merimaa, J., 2006. "Spatial impulse response
 %       rendering II: Reproduction of diffuse sound and listening tests". 
 %       Journal of the Audio Engineering Society, 54(1/2), pp.3-20. 
 %
