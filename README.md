@@ -73,10 +73,10 @@ This code is provided under the [BSD 3-clause license](https://opensource.org/li
 
 ## References 
 
-[1] McCormack, L., Pulkki, V., Politis, A., Scheuregger, O. and Marschall, M., (2020). [**"Higher-Order Spatial Impulse Response Rendering: Investigating the Perceived Effects of Spherical Order, Dedicated Diffuse Rendering, and Frequency Resolution"**](docs/mccormack2020higher). 
+[1] McCormack, L., Pulkki, V., Politis, A., Scheuregger, O. and Marschall, M., (2020). [**"Higher-Order Spatial Impulse Response Rendering: Investigating the Perceived Effects of Spherical Order, Dedicated Diffuse Rendering, and Frequency Resolution"**](docs/mccormack2020higher.pdf). 
 Journal of the Audio Engineering Society, 68(5), pp.338-354.
 
-[2] McCormack, L., Politis, A., Scheuregger, O., and Pulkki, V. (2019). ["**Higher-order processing of spatial impulse responses**"](docs/mccormack2019higher).
+[2] McCormack, L., Politis, A., Scheuregger, O., and Pulkki, V. (2019). ["**Higher-order processing of spatial impulse responses**"](docs/mccormack2019higher.pdf).
 In Proceedings of the 23rd International Congress on Acoustics, 9--13 September 2019 in Aachen, Germany.
 
 [3] Politis, A. and Pulkki, V., 2016. "**Acoustic intensity, energy-density and diffuseness estimation in a directionally-constrained region**". 
