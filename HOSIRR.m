@@ -657,7 +657,7 @@ else
         case 'maxRE'
             b_n = beamWeightsMaxEV(orderSec);
             Q = 4*pi/(b_n'*b_n);            
-        case {'pwd', 'hpercardioid'}
+        case {'pwd', 'hypercardioid'}
             b_n = beamWeightsHypercardioid2Spherical(orderSec);
             Q = (orderSec+1)^2;
         otherwise
