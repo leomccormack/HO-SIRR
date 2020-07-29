@@ -347,7 +347,7 @@ for nr = 1:nRes
                     if pars.order == 1
                         a_diff = repmat(diffgains, [1 nSH]).*inspec_syn./sqrt(nSH);
                     else
-                        z_diff(:, n) = diffgains .* nnorm .* z_00(:,n); 
+                        z_diff(:, n) = diffgains .* sqrt(nnorm) .* z_00(:,n); 
                     end
             end  
         end 
