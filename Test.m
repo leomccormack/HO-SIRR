@@ -158,7 +158,7 @@ pars.normScheme = 'N3D';
 % --- Three plane-wave input --- 
 src_dir = [26 15; 153 -15; -116 -15]; % plane-waves landing in sectors: 1, 5, and 16
 shir = randn(pars.fs, size(src_dir,1)) * (sqrt(4*pi).*getRSH(pars.order, src_dir)).';
-[~,~,~,~,analysis] = HOSIRR(shir, pars, 0);
+[~,~,~,~,analysis] = HOSIRR(shir, pars);
 
 % In this case, for sectors (1,5,16) we would expect:
 % - [azimuth elevation] should correspond to 'src_dir' for their respective sectors 
