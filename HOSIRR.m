@@ -150,10 +150,14 @@ vbap_gtable_res = [2 2]; % azi, elev, step sizes in degrees
 gtable = getGainTable(ls_dirs_deg, vbap_gtable_res); 
  
 % Sector design 
-[~,sec_dirs_rad] = getTdesign(2*(pars.order));  % wrong degree
+[~,sec_dirs_rad] = getTdesign(2*(pars.order));  % TODO: Check grid order
 A_xyz = computeVelCoeffsMtx(pars.order-1);
 %[pars.sectorCoeffs, pars.normSec] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
-[pars.sectorCoeffs, pars.normSec, sec_dirs_rad] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', 'EP', sec_dirs_rad);
+[pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = computeSectorCoeffs(pars.order-1, A_xyz, 'cardioid', [], sec_dirs_rad);
+% amplitude normalisation term
+amp_norm = pars.secNorms(1);
+% energy normalisation term
+energy_norm = pars.secNorms(2);
 
 if pars.order~=1
     pars.sectorDirs = sec_dirs_rad;
@@ -300,6 +304,10 @@ for nr = 1:nRes
         end 
         
         %%% SIRR SYNTHESIS %%% 
+        
+%         warning('DIFF')
+%         diffs(:, :) = 0;
+        
         if pars.RENDER_DIFFUSE
             z_diff = zeros(nBins_syn, numSec); 
         end
@@ -326,13 +334,10 @@ for nr = 1:nRes
             % Interpolate panning filters 
             ndiffgains = interpolateFilters(permute(ndiffgains, [3 2 1]), fftsize);
             ndiffgains = permute(ndiffgains, [3 2 1]);
-
-            % Normalisation term
-            nnorm = pars.normSec;
             
             % generate non-diffuse stream
             z_00(:,n) = inspec_syn*W_S(:, 4*(n-1) + 1);
-            outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*z_00(:,n)*ones(1,nLS));
+            outspec_ndiff = outspec_ndiff + ndiffgains .* (amp_norm.*z_00(:,n)*ones(1,nLS));
     
             % DIFFUSE PART
             switch pars.RENDER_DIFFUSE
@@ -347,7 +352,7 @@ for nr = 1:nRes
                     if pars.order == 1
                         a_diff = repmat(diffgains, [1 nSH]).*inspec_syn./sqrt(nSH);
                     else
-                        z_diff(:, n) = diffgains .* sqrt(nnorm) .* z_00(:,n); 
+                        z_diff(:, n) = diffgains .* sqrt(energy_norm) .* z_00(:,n); 
                     end
             end  
         end 
@@ -367,6 +372,8 @@ for nr = 1:nRes
         analysis.sf_energy{nr}(framecount,1) = mean(sum(abs(inspec_syn).^2/nSH,2)); 
         analysis.ndiff_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff).^2,2)); 
         analysis.diff_energy{nr}(framecount,1) = mean(sum(abs(outspec_diff).^2,2));
+        analysis.total_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff+outspec_diff).^2,2));
+
          
         % ambi_ = mean(sum(abs(a_diff).^2,2)); 
 %         sf_ = analysis.sf_energy{nr}(framecount,1); 
@@ -618,7 +625,7 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [sectorCoeffs, normSec, sec_dirs] = computeSectorCoeffs(orderSec, A_xyz, pattern, norm, sec_dirs)
+function [sectorCoeffs, secNorms, sec_dirs] = computeSectorCoeffs(orderSec, A_xyz, pattern, norm, sec_dirs)
 
 orderVel = orderSec+1;
 
@@ -631,7 +638,7 @@ if orderSec == 0
          0       sqrt(4*pi/3)   0               0];
 
     % convert to real SH coefficients to use with the real signals
-    normSec = 1;
+    secNorms = [1 1];
     sectorCoeffs = wxyzCoeffs;
     sec_dirs = [];  % or [0, 0], empty more explicit
 
@@ -664,16 +671,12 @@ else
             error("Unknown sector design! " + pattern);
     end
     
-    switch norm
-        case 'AP'
-            % amplitude normalisation for sector patterns
-            normSec = sqrt(4*pi) / (b_n(1) * numSec);
-        case 'EP'
-            % energy normalisation for sector patterns
-            normSec = Q/numSec;
-        otherwise
-            error("Use 'AP' or 'EP' normalization");
-    end 
+    % amplitude normalisation for sector patterns
+    amp_norm = sqrt(4*pi) / (b_n(1) * numSec);
+    % energy normalisation for sector patterns
+    energy_norm = Q/numSec;
+
+    secNorms = [amp_norm, energy_norm];
     
     for ns = 1:numSec
         
