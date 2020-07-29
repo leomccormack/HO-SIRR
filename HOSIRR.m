@@ -259,7 +259,7 @@ for nr = 1:nRes
         s_ana = inspec_anl*W_S; 
         for n=1:numSec 
             % weighted pressure-velocity signals for this sector
-            WXYZ_sec = pars.normSec * s_ana(:,4*(n-1) + (1:4));   
+            WXYZ_sec = s_ana(:,4*(n-1) + (1:4));   
             
             % Compute Intensity vector for each frequency bin
             I = real(conj(WXYZ_sec(:,1)*ones(1,3)) .* WXYZ_sec(:,2:4));  
