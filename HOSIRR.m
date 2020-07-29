@@ -150,9 +150,11 @@ vbap_gtable_res = [2 2]; % azi, elev, step sizes in degrees
 gtable = getGainTable(ls_dirs_deg, vbap_gtable_res); 
  
 % Sector design 
-[~,sec_dirs_rad] = getTdesign(2*(pars.order)); 
+[~,sec_dirs_rad] = getTdesign(2*(pars.order));  % wrong degree
 A_xyz = computeVelCoeffsMtx(pars.order-1);
-[pars.sectorCoeffs, pars.normSec] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
+%[pars.sectorCoeffs, pars.normSec] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
+[pars.sectorCoeffs, pars.normSec, sec_dirs_rad] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', 'EP', sec_dirs_rad);
+
 if pars.order~=1
     pars.sectorDirs = sec_dirs_rad;
 end 
@@ -266,8 +268,8 @@ for nr = 1:nRes
             if pars.BROADBAND_DIFFUSENESS
                 % Compute broad-band active-intensity vector
                 pvCOV = (WXYZ_sec(1:maxDiffFreq_Ind,:)'*WXYZ_sec(1:maxDiffFreq_Ind,:)); 
-                I_diff = real(pvCOV(2:4,1)); 
-                energy = 0.5.*trace(pvCOV);  
+                I_diff = real(pvCOV(2:4,1));
+                energy = 0.5.*real(trace(pvCOV));  % real to cast from complex to real
 
                 % Estimating and time averaging of boadband diffuseness
                 diff_intensity = (1-pars.alpha_diff).*I_diff + pars.alpha_diff.*prev_intensity(:,n);
@@ -292,6 +294,7 @@ for nr = 1:nRes
             % storage for estimated parameters over time
             analysis.azim{nr}(:,framecount,n) = azim(:,n);
             analysis.elev{nr}(:,framecount,n) = elev(:,n);
+            assert(energy>=0)
             analysis.energy{nr}(:,framecount,n) = energy;
             analysis.diff{nr}(:,framecount,n) = diffs(:,n); 
         end 
@@ -615,13 +618,7 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [sectorCoeffs, normSec] = computeSectorCoeffs(orderSec, A_xyz, pattern, sec_dirs, norm)
-% COMPUTESECTORCOEFFS Computes the beamforming matrices of sector and 
-% velocity coefficients for energy-preserving sectors, for orderSec, 
-% for real SH.
-%
-%   Archontis Politis, 12/06/2018
-%   archontis.politis@aalto.fi
+function [sectorCoeffs, normSec, sec_dirs] = computeSectorCoeffs(orderSec, A_xyz, pattern, norm, sec_dirs)
 
 orderVel = orderSec+1;
 
@@ -635,19 +632,21 @@ if orderSec == 0
 
     % convert to real SH coefficients to use with the real signals
     normSec = 1;
-    sectorCoeffs = normSec*wxyzCoeffs;
-    
+    sectorCoeffs = wxyzCoeffs;
+    sec_dirs = [];  % or [0, 0], empty more explicit
+
 else
     
     wxyzCoeffs = [];
-    if nargin<4
+    if nargin<5
         switch norm
             case 'AP'
                 [~, sec_dirs] = getTdesign(orderSec+1); 
             case 'EP'
                 [~, sec_dirs] = getTdesign(2*orderSec);
-        end 
-        
+            otherwise
+                error("Use 'AP' or 'EP' normalization");
+        end   
     end
     numSec = size(sec_dirs,1);
     
@@ -658,18 +657,22 @@ else
         case 'maxRE'
             b_n = beamWeightsMaxEV(orderSec);
             Q = 4*pi/(b_n'*b_n);            
-        case 'pwd'
+        case {'pwd', 'hpercardioid'}
             b_n = beamWeightsHypercardioid2Spherical(orderSec);
-            Q = (orderSec+1)^2;            
+            Q = (orderSec+1)^2;
+        otherwise
+            error("Unknown sector design! " + pattern);
     end
     
     switch norm
         case 'AP'
             % amplitude normalisation for sector patterns
-            normSec = (orderSec+1)/numSec;
+            normSec = sqrt(4*pi) / (b_n(1) * numSec);
         case 'EP'
             % energy normalisation for sector patterns
             normSec = Q/numSec;
+        otherwise
+            error("Use 'AP' or 'EP' normalization");
     end 
     
     for ns = 1:numSec
@@ -677,7 +680,7 @@ else
         % rotate the pattern by rotating the coefficients
         azi_sec = sec_dirs(ns, 1);
         polar_sec = pi/2-sec_dirs(ns, 2); % from elevation to inclination
-        c_nm = sqrt(normSec) * rotateAxisCoeffs(b_n, polar_sec, azi_sec, 'complex');
+        c_nm = rotateAxisCoeffs(b_n, polar_sec, azi_sec, 'complex');  % CFH: no compensation here
         % get the velocity coeffs
         x_nm = A_xyz(1:(orderVel+1)^2, 1:(orderSec+1)^2, 1)*c_nm;
         y_nm = A_xyz(1:(orderVel+1)^2, 1:(orderSec+1)^2, 2)*c_nm;
