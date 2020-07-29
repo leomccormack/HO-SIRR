@@ -328,7 +328,7 @@ for nr = 1:nRes
             ndiffgains = permute(ndiffgains, [3 2 1]);
 
             % Normalisation term
-            nnorm = sqrt(pars.normSec);
+            nnorm = pars.normSec;
             
             % generate non-diffuse stream
             z_00(:,n) = inspec_syn*W_S(:, 4*(n-1) + 1);
