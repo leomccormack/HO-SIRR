@@ -272,8 +272,8 @@ for nr = 1:nRes
             if pars.BROADBAND_DIFFUSENESS
                 % Compute broad-band active-intensity vector
                 pvCOV = (WXYZ_sec(1:maxDiffFreq_Ind,:)'*WXYZ_sec(1:maxDiffFreq_Ind,:)); 
-                I_diff = real(pvCOV(2:4,1));
-                energy = 0.5 .* real(trace(pvCOV));  % real to cast from complex to real
+                I_diff = real(pvCOV(2:4,1)); 
+                energy = 0.5 .* real(trace(pvCOV));  % cast back to real
 
                 % Estimating and time averaging of boadband diffuseness
                 diff_intensity = (1-pars.alpha_diff).*I_diff + pars.alpha_diff.*prev_intensity(:,n);
