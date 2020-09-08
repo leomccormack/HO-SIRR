@@ -152,9 +152,8 @@ itd = computeITDfromXCorr(hrir, pars.fs);
 
 %pars.hrtfs = permute(hrtf_mtx_ipd, [2 3 1]);           % 2 x nHRTF x nBands
 %pars.hrtfs_mag = abs(pars.hrtfs);
-pars.hrtf_dirs_deg = hrir_dirs_deg(1:2,:).'; %         % nHRTF x 2     (deg)
-hrtfs_azi = pars.hrtf_dirs_deg(:, 1);
-hrtfs_ele = pars.hrtf_dirs_deg(:, 2);
+hrir_dirs_deg = hrir_dirs_deg(1:2,:).'; %         % nHRTF x 2     (deg)
+pars.hrtf_dirs_deg = hrir_dirs_deg;
 pars.hrtf_itd = itd;        % nHRTF x 1 
 pars.hrtf_vbapTableRes = [2 5]; % resolution azim/elev in degs
 vbapTable = getGainTable(pars.hrtf_dirs_deg, pars.hrtf_vbapTableRes);
@@ -214,31 +213,26 @@ for nr = 1:nRes
     hopsize = winsize/2; % half the window size time-resolution
     nBins_anl = winsize/2 + 1; % nBins used for analysis
     nBins_syn = fftsize/2 + 1; % nBins used for synthesis 
-    centerfreqs_anl = (0:winsize/2)'*pars.fs/winsize;
+    pars.centerfreqs_anl = (0:winsize/2)'*pars.fs/winsize;
     if pars.BROADBAND_DIFFUSENESS
         if nr==nRes
-            [~,maxDiffFreq_Ind] = min(abs(centerfreqs_anl-min(pars.maxDiffFreq_Hz)));
+            [~,maxDiffFreq_Ind] = min(abs(pars.centerfreqs_anl-min(pars.maxDiffFreq_Hz)));
         else
-            [~,maxDiffFreq_Ind] = min(abs(centerfreqs_anl-min(pars.maxDiffFreq_Hz,pars.multires_xovers(nr))));  
+            [~,maxDiffFreq_Ind] = min(abs(pars.centerfreqs_anl-min(pars.maxDiffFreq_Hz,pars.multires_xovers(nr))));  
         end 
-    end  
+    end   
     
     % Prepare HRTFs
-    hrtfs = fft(hrir, fftsize, 1);
+    hrtfs_anl = fft(hrir, winsize, 1);
+    hrtfs_syn = fft(hrir, fftsize, 1);
     if mod(size(hrir, 1), 2)
         error('not implemented')
     else  % even
-        hrtfs = hrtfs(1:nBins_syn, :, :);  % check this
+        hrtfs_anl = hrtfs_anl(1:nBins_anl, :, :);  % check this
+        hrtfs_syn = hrtfs_syn(1:nBins_syn, :, :);  % check this, JOOO -Leo
     end
-    pars.hrtf_mag = abs(hrtfs);
-    hrtf_interp = zeros(2, nBins_syn);
-    %[mags_interp, itd_interp] = interpHRTFs(hrtfs_azi, hrtfs_ele, codecPars, nBins_syn);
-    % convert ITDs to phase differences -pi~pi
-    ipd_interp = mod(2*pi*centerfreq(band)*itd_interp + pi, 2*pi) - pi;
-    % introducing IPDs
-    hrtf_interp(1,:) = mags_interp(1,:) .* exp(1i*ipd_interp/2);
-    hrtf_interp(2,:) = mags_interp(2,:) .* exp(-1i*ipd_interp/2);
-    
+    pars.hrtf_mag = abs(hrtfs_anl);
+     
     % storage for estimated parameters
     analysis.azim{nr} = nan(nBins_anl, ceil(lSig/hopsize), numSec);
     analysis.elev{nr} = nan(nBins_anl, ceil(lSig/hopsize), numSec);
@@ -264,11 +258,11 @@ for nr = 1:nRes
             % SHs, and then decoding them to the loudspeaker setup
             if pars.order==1
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';  
-                D_bin = getAmbisonic2BinauralFilters_magls_zotter(hrtfs, hrir_dirs_deg, order, [], fs);
+                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs_syn, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs);
             else 
                 Y_enc = sqrt(4*pi).*getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order-1, ls_dirs_deg).';   
-                D_bin = getAmbisonic2BinauralFilters_magls_zotter(hrtfs, hrir_dirs_deg, order, [], fs);
+                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs_syn, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs);
             end    
     end 
      
@@ -359,18 +353,18 @@ for nr = 1:nRes
             ndiffs_sqrt = sqrt(1-diffs(:,n)); 
             
             % Gain factor computation
-            eleindex = round((elev(:,n)*180/pi+90)/vbap_gtable_res(2));
-            aziindex = round(mod(azim(:,n)*180/pi+180,360)/vbap_gtable_res(1));
-            index = aziindex + (eleindex*181) + 1;
-            gains = gtable(index,:);  
-            
-            
-            
+            %eleindex = round((elev(:,n)*180/pi+90)/vbap_gtable_res(2));
+            %aziindex = round(mod(azim(:,n)*180/pi+180,360)/vbap_gtable_res(1));
+            %index = aziindex + (eleindex*181) + 1;
+            %gains = gtable(index,:);  
+              
+            hrtf_interp = interpHRTFs(azim, elev, pars);
+             
             % Interpolate the gains in frequency for proper convolution
             if pars.RENDER_DIFFUSE
-                ndiffgains = gains .* (ndiffs_sqrt*ones(1,nLS)); 
+                ndiffgains = hrtf_interp .* (ndiffs_sqrt*ones(1,2)); 
             else
-                ndiffgains = gains; 
+                ndiffgains = hrtf_interp; 
             end
             
             % Interpolate panning filters 
@@ -382,7 +376,7 @@ for nr = 1:nRes
             
             % generate non-diffuse stream
             z_00(:,n) = inspec_syn*W_S(:, 4*(n-1) + 1);
-            outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*z_00(:,n)*ones(1,nLS));
+            outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*z_00(:,n)*ones(1,2));
     
             % DIFFUSE PART
             switch pars.RENDER_DIFFUSE
@@ -405,7 +399,10 @@ for nr = 1:nRes
             if pars.order > 1
                 a_diff = z_diff./sqrt(numSec) * Y_enc.'; 
             end % encode 
-            outspec_diff = a_diff * D_ls.'; % decode
+            outspec_diff = zeros(nBins_syn, 2);
+            for k=1:nBins_syn
+                outspec_diff(k,:) = (squeeze(D_bin(:,:,k)) * a_diff(k,:).').'; % decode
+            end
         end
         
         % decorrelation based on randomising the phase
@@ -475,7 +472,7 @@ if isequal(pars.decorrelationType, 'noise') && pars.RENDER_DIFFUSE
     %t60 = [0.07 0.07 0.06 0.04 0.02 0.01];
     t60 = [0.2 0.2 0.16 0.12 0.09 0.04];
     fc = [125 250 500 1e3 2e3 4e3];
-    randmat =  synthesizeNoiseReverb(nLS, pars.fs, t60, fc, 1); 
+    randmat =  synthesizeNoiseReverb(2, pars.fs, t60, fc, 1); 
     % Decorrelation
     lsir_diff = fftfilt(randmat, lsir_diff);
     clear randmat;
@@ -747,26 +744,31 @@ end
 
 end
  
-function [mags_interp, itd_interp] = interpHRTFs(azi, elev, codecPars, nFrames)
+function hrtf_interp = interpHRTFs(azi, elev, pars)
 
-    nDirs = length(azi);
+    nBins = length(azi);
+    hrtf_interp = zeros(nBins, 2);
 
     % find closest pre-computed VBAP direction
-    az_res = codecPars.hrtf_vbapTableRes(1); el_res = codecPars.hrtf_vbapTableRes(2);
+    az_res = pars.hrtf_vbapTableRes(1); el_res = pars.hrtf_vbapTableRes(2);
     N_azi = round(360/az_res) + 1;
     aziIndex = round(mod(azi+180,360)/double(az_res));
     elevIndex = round((elev+90)/double(el_res));
     gridIndex = elevIndex*double(N_azi)+aziIndex+1; % + 1 for matlab only
-    idx3 = codecPars.hrtf_vbapTableIdx(gridIndex,:);  
-    weights3 = codecPars.hrtf_vbapTableComp(gridIndex,:);
+    idx3 = pars.hrtf_vbapTableIdx(gridIndex,:);  
+    weights3 = pars.hrtf_vbapTableComp(gridIndex,:);
+ 
+    for k=1:nBins
+        mags3_nd = reshape(pars.hrtf_mag(k,:,idx3(k,:)),[2 3]).';
+        itds3_nd = pars.hrtf_itd(idx3(k,:));
+        itd_interp = weights3(k,:) * itds3_nd; 
+        mags_interp = weights3(k,:) * mags3_nd;
+        
+        % convert ITDs to phase differences -pi~pi
+        ipd_interp = mod(2*pi*pars.centerfreqs_anl(k)*itd_interp + pi, 2*pi) - pi;
 
-    mags_interp = zeros(2,nFrames);
-    itd_interp = zeros(1,nFrames);
-    for nd=1:nDirs
-        mags3_nd = reshape(codecPars.hrtf_mag(:,:,idx3(nd,:)),[2 3]).';
-        itds3_nd = codecPars.hrtf_itd(idx3(nd,:));
-        itd_interp(nd) = weights3(nd,:) * itds3_nd;
-
-        mags_interp(:,nd) = weights3(nd,:) * mags3_nd;
+        % introducing IPDs
+        hrtf_interp(k,1) = mags_interp(1,1) .* exp(1i*ipd_interp/2);
+        hrtf_interp(k,2) = mags_interp(1,2) .* exp(-1i*ipd_interp/2);
     end
 end

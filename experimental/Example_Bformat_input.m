@@ -28,7 +28,7 @@ clear all, close all, dbstop if error %#ok
 addpath '..'
 addpath '../_Simulated_Rooms_' '../_Stimuli_'
 
-demo_order = 3;  
+demo_order = 1;  
 [input_stimulus, fs_in] = audioread('music__KickDrumClicky.wav');
 
 
@@ -92,8 +92,9 @@ pars.alpha_diff = 0.5;
 
 % 
 % %% EITHER: DEFINE THE SAME LOUDSPEAKER DIRECTIONS AS REFERENCE
-% load('DTU_ls_dirs_deg.mat') 
-% pars.ls_dirs_deg = ls_dirs_deg;
+load('DTU_ls_dirs_deg.mat') 
+[~, dirs_rad] = getTdesign(5);
+pars.ls_dirs_deg = dirs_rad*180/pi;
 % 
 % 
 % %% OR: DEFINE LOUDSPEAKER DIRECTIONS FOR YOUR SETUP
@@ -106,8 +107,8 @@ pars.alpha_diff = 0.5;
 % 
 % %% RENDER SH RIR TO TARGET LOUDSPEAKER LAYOUT
 % % Render
-% tic, sirr_ls_rir = HOSIRR(sh_rir, pars); toc
-% %audiowrite(['HOSIRR_o' num2str(demo_order) '.wav'], 0.9.*sirr_ls_rir, fs);
+tic, sirr_ls_rir = HOSIRR(sh_rir, pars); toc
+audiowrite(['HOSIRR_ls_o' num2str(demo_order) '.wav'], 0.9.*sirr_ls_rir, fs);
 % 
 % % Convolve the input stimulus with the rendered loudspeaker array RIR
 % ir_length = size(sirr_ls_rir, 1);
@@ -118,6 +119,13 @@ pars.alpha_diff = 0.5;
 
 %% WIP: BINAURAL
 % load HRIRs
-pars.hrtf_sofa_path = '/Users/holdc1/Documents/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
-[~, ~] = HOSIRR_bin(sh_rir, pars);
+%pars.hrtf_sofa_path = '/Users/holdc1/Documents/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
+pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
+pars.BROADBAND_FIRST_PEAK = 0;
+[lsir, ~] = HOSIRR_bin(sh_rir, pars);
+audiowrite(['HOSIRR_o' num2str(demo_order) '.wav'], 0.9.*lsir, fs);
+
+ 
+
+
 
