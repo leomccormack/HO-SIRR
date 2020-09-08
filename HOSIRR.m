@@ -294,7 +294,7 @@ for nr = 1:nRes
                 %assert(all(diffs(:,n)<=1.001))
                 %assert(all(diffs(:,n)>=0))
             end 
-
+             
             % storage for estimated parameters over time
             analysis.azim{nr}(:,framecount,n) = azim(:,n);
             analysis.elev{nr}(:,framecount,n) = elev(:,n);
@@ -305,8 +305,8 @@ for nr = 1:nRes
         
         %%% SIRR SYNTHESIS %%% 
         
-%         warning('DIFF')
-%         diffs(:, :) = 0;
+        % warning('DIFF')
+        % diffs(:, :) = 1;
         
         if pars.RENDER_DIFFUSE
             z_diff = zeros(nBins_syn, numSec); 
@@ -423,8 +423,13 @@ if pars.RENDER_DIFFUSE
     lsir_diff = lsir_pad_diff(delay + (1:lSig), :);
 end
 
+if pars.REPLACE_DIFFUSE_STREAM_WITH_NOISE
+    lsir_diff_noise = 2*rand(size(lsir_diff))-1; 
+    lsir_diff_noise = lsir_diff_noise .* abs(lsir_diff);
+    lsir_diff = lsir_diff_noise;
+    
 % apply convolution decorrelation to diffuse stream if specified
-if isequal(pars.decorrelationType, 'noise') && pars.RENDER_DIFFUSE
+elseif isequal(pars.decorrelationType, 'noise') && pars.RENDER_DIFFUSE
     % we want to apply just enough noise-based reverberation as 
     % to suitably decorrelate the signals, but not change the captured room 
     % characteristics too much. T60s of a very, very dry room should suffice for
