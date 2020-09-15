@@ -373,10 +373,11 @@ for nr = 1:nRes
             % generate non-diffuse stream
             z_00(:,n) = inspec*W_S(:, 4*(n-1) + 1);
             
-            % Zero pad
+            % prepare for frequency domain convolution
             ndiffgains = squeeze(permute(interpolateFilters(permute(ndiffgains, [3, 2, 1]), fftsize), [3, 2, 1]));
-            % NOT LIKE THIS
-            z_00 = squeeze(permute(interpolateFilters(permute(z_00, [3, 2, 1]), fftsize), [3, 2, 1]));
+            z_00 = interpolateSpectrum(z_00, fftsize);
+            
+            % apply filter
             outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*z_00(:,n)*ones(1,2));
     
             % DIFFUSE PART
@@ -403,9 +404,8 @@ for nr = 1:nRes
             outspec_diff = zeros(nBins_syn, 2);
             % prepare for frequency domain convolution
             D_bin = interpolateFilters(D_bin, fftsize);
-            % TODO!! NOT LIKE THIS
-            a_diff = squeeze(permute(interpolateFilters(permute(a_diff, [3, 2, 1]), fftsize), [3,2,1]));
-            
+            a_diff = interpolateSpectrum(a_diff, fftsize);
+
             for k=1:nBins_syn
                 outspec_diff(k,:) = (squeeze(D_bin(:,:,k)) * a_diff(k,:).').'; % decode
             end
@@ -778,3 +778,15 @@ function hrtf_interp = interpHRTFs(azi, elev, pars)
         hrtf_interp(k,2) = mags_interp(1,2) .* exp(-1i*ipd_interp/2);
     end
 end
+
+function X_interp = interpolateSpectrum(X, fftsize)
+% Interpolate single sided spectrum X:[t, numCh] by zero padding.
+assert(fftsize >= 2*(size(X, 1)-1))  % Will truncate otherwise
+assert(mod(size(X, 1), 2) == 1)  % needs to be odd single sided spectrum
+
+X_full = cat(1, X, conj(X(end-1:-1:2, :)));  % mirror
+x = ifft(X_full, [], 1);
+X_pad = fft(x, fftsize);  % interpolate spectrum by zero padding
+X_interp = X_pad(1:fftsize/2+1, :);  % return single sided spectrum
+end
+
