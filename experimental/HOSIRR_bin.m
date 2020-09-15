@@ -223,15 +223,14 @@ for nr = 1:nRes
     end   
     
     % Prepare HRTFs
-    hrtfs_anl = fft(hrir, winsize, 1);
-    hrtfs_syn = fft(hrir, fftsize, 1);
+    hrtfs = fft(hrir, winsize, 1);
+    %hrtfs_syn = fft(hrir, fftsize, 1);
     if mod(size(hrir, 1), 2)
         error('not implemented')
     else  % even
-        hrtfs_anl = hrtfs_anl(1:nBins_anl, :, :);  % check this
-        hrtfs_syn = hrtfs_syn(1:nBins_syn, :, :);  % check this, JOOO -Leo
+        hrtfs = hrtfs(1:nBins_anl, :, :);
     end
-    pars.hrtf_mag = abs(hrtfs_anl);
+    pars.hrtf_mag = abs(hrtfs);
      
     % storage for estimated parameters
     analysis.azim{nr} = nan(nBins_anl, ceil(lSig/hopsize), numSec);
@@ -258,11 +257,11 @@ for nr = 1:nRes
             % SHs, and then decoding them to the loudspeaker setup
             if pars.order==1
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';  
-                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs_syn, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs);
+                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs);
             else 
                 Y_enc = sqrt(4*pi).*getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order-1, ls_dirs_deg).';   
-                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs_syn, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs);
+                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs);
             end    
     end 
      
@@ -289,17 +288,14 @@ for nr = 1:nRes
     while idx + maxWinsize <= lSig + 2*maxWinsize  
         % Window input and transform to frequency domain
         insig_win = win*ones(1,nSH) .* shir_res(idx+(0:winsize-1),:,nr);
-        inspec_syn = fft(insig_win, fftsize);
-        inspec_syn = inspec_syn(1:nBins_syn,:); % keep up to nyquist
-        
-        % Do analysis using only true resolution
-        inspec_anl = inspec_syn(1:fftsize/winsize:end,:);
+        inspec = fft(insig_win);
+        inspec = inspec(1:nBins_anl,:); % keep up to nyquist
          
         %%% SIRR ANALYSIS %%%
         outspec_ndiff = 0;
         outspec_diff = 0;
         W_S = pars.sectorCoeffs;   
-        s_ana = inspec_anl*W_S; 
+        s_ana = inspec*W_S; 
         for n=1:numSec 
             % weighted pressure-velocity signals for this sector
             WXYZ_sec = s_ana(:,4*(n-1) + (1:4));   
@@ -311,7 +307,7 @@ for nr = 1:nRes
             if pars.BROADBAND_DIFFUSENESS
                 % Compute broad-band active-intensity vector
                 pvCOV = (WXYZ_sec(1:maxDiffFreq_Ind,:)'*WXYZ_sec(1:maxDiffFreq_Ind,:)); 
-                I_diff = real(pvCOV(2:4,1)); 
+                I_diff = real(pvCOV(2:4,1));
                 energy = 0.5.*real(trace(pvCOV));  % cast back to real
 
                 % Estimating and time averaging of boadband diffuseness
@@ -345,7 +341,7 @@ for nr = 1:nRes
         if pars.RENDER_DIFFUSE
             z_diff = zeros(nBins_syn, numSec); 
         end
-        z_00 = zeros(nBins_syn, numSec); 
+        z_00 = zeros(nBins_anl, numSec); 
         W_S = pars.sectorCoeffs./sqrt(4*pi);   
         for n=1:numSec  
              
@@ -360,22 +356,27 @@ for nr = 1:nRes
               
             hrtf_interp = interpHRTFs(azim, elev, pars);
              
-            % Interpolate the gains in frequency for proper convolution
+            % apply ndiff gain to hrtf
             if pars.RENDER_DIFFUSE
                 ndiffgains = hrtf_interp .* (ndiffs_sqrt*ones(1,2)); 
             else
-                ndiffgains = hrtf_interp; 
+                ndiffgains = hrtf_interp;  % TODO????????
             end
             
             % Interpolate panning filters 
-            ndiffgains = interpolateFilters(permute(ndiffgains, [3 2 1]), fftsize);
-            ndiffgains = permute(ndiffgains, [3 2 1]);
+            %ndiffgains = interpolateFilters(permute(ndiffgains, [3 2 1]), fftsize);
+            %ndiffgains = permute(ndiffgains, [3 2 1]);
 
             % Normalisation term
             nnorm = sqrt(pars.normSec);
             
             % generate non-diffuse stream
-            z_00(:,n) = inspec_syn*W_S(:, 4*(n-1) + 1);
+            z_00(:,n) = inspec*W_S(:, 4*(n-1) + 1);
+            
+            % Zero pad
+            ndiffgains = squeeze(permute(interpolateFilters(permute(ndiffgains, [3, 2, 1]), fftsize), [3, 2, 1]));
+            % NOT LIKE THIS
+            z_00 = squeeze(permute(interpolateFilters(permute(z_00, [3, 2, 1]), fftsize), [3, 2, 1]));
             outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*z_00(:,n)*ones(1,2));
     
             % DIFFUSE PART
@@ -386,10 +387,10 @@ for nr = 1:nRes
                     % New SIRR diffuse stream rendering, based on re-encoding the 
                     % sector signals scaled with the diffuseness estimates
                     diffgains = sqrt(diffs(:,n));  
-                    diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
-                    diffgains = permute(diffgains, [3 2 1]); 
+                    %diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
+                    %diffgains = permute(diffgains, [3 2 1]); 
                     if pars.order == 1
-                        a_diff = repmat(diffgains, [1 nSH]).*inspec_syn./sqrt(nSH);
+                        a_diff = repmat(diffgains, [1 nSH]).*inspec./sqrt(nSH);
                     else
                         z_diff(:, n) = diffgains .* z_00(:,n); 
                     end
@@ -400,6 +401,11 @@ for nr = 1:nRes
                 a_diff = z_diff./sqrt(numSec) * Y_enc.'; 
             end % encode 
             outspec_diff = zeros(nBins_syn, 2);
+            % prepare for frequency domain convolution
+            D_bin = interpolateFilters(D_bin, fftsize);
+            % TODO!! NOT LIKE THIS
+            a_diff = squeeze(permute(interpolateFilters(permute(a_diff, [3, 2, 1]), fftsize), [3,2,1]));
+            
             for k=1:nBins_syn
                 outspec_diff(k,:) = (squeeze(D_bin(:,:,k)) * a_diff(k,:).').'; % decode
             end
@@ -411,7 +417,7 @@ for nr = 1:nRes
             outspec_diff = abs(outspec_diff) .* exp(1i*randomPhi);
         end  
         
-        analysis.sf_energy{nr}(framecount,1) = mean(sum(abs(inspec_syn).^2/nSH,2)); 
+        analysis.sf_energy{nr}(framecount,1) = mean(sum(abs(inspec).^2/nSH,2)); 
         analysis.ndiff_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff).^2,2)); 
         analysis.diff_energy{nr}(framecount,1) = mean(sum(abs(outspec_diff).^2,2));
          
