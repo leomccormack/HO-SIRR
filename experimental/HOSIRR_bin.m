@@ -147,6 +147,7 @@ end
 hrir = ncread(pars.hrtf_sofa_path,'Data.IR');
 hrir_dirs_deg = ncread(pars.hrtf_sofa_path,'SourcePosition');
 numHrirs = size(hrir, 3);
+
 itd = computeITDfromXCorr(hrir, pars.fs);
 %hrtf_mtx_ipd = HRTFtoFilterbankCoeffs(hrir, afCenterFreq48000, itd, 1);
 
@@ -209,10 +210,11 @@ lsir_res_diff = zeros(lSig + 2*maxfftsize + xover_order, 2, nRes);
 for nr = 1:nRes 
     disp(['Processing frequency region no. ' num2str(nr)]);
     winsize = pars.multires_winsize(nr);
-    fftsize = 2*winsize; % double the window size for FD convolution
     hopsize = winsize/2; % half the window size time-resolution
     nBins_anl = winsize/2 + 1; % nBins used for analysis
-    nBins_syn = fftsize/2 + 1; % nBins used for synthesis 
+    
+    fftsize_syn = 2*winsize; % double the window size for FD convolution, one more than necessary
+    nBins_syn = fftsize_syn/2 + 1; % nBins used for synthesis 
     pars.centerfreqs_anl = (0:winsize/2)'*pars.fs/winsize;
     if pars.BROADBAND_DIFFUSENESS
         if nr==nRes
@@ -223,12 +225,12 @@ for nr = 1:nRes
     end   
     
     % Prepare HRTFs
-    hrtfs = fft(hrir, winsize, 1);
+    hrtfs = fft(hrir, winsize, 1);  % TODO truncates
     %hrtfs_syn = fft(hrir, fftsize, 1);
     if mod(size(hrir, 1), 2)
         error('not implemented')
     else  % even
-        hrtfs = hrtfs(1:nBins_anl, :, :);
+        hrtfs = hrtfs(1:nBins_anl, :, :);  % pos half
     end
     pars.hrtf_mag = abs(hrtfs);
      
@@ -256,7 +258,8 @@ for nr = 1:nRes
             % with diffuseness estimates and then re-encoding them into 
             % SHs, and then decoding them to the loudspeaker setup
             if pars.order==1
-                %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';  
+                %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';
+                % TODO: weights
                 D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs);
             else 
                 Y_enc = sqrt(4*pi).*getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
@@ -346,7 +349,10 @@ for nr = 1:nRes
         for n=1:numSec  
              
             % NON-DIFFUSE PART
-            ndiffs_sqrt = sqrt(1-diffs(:,n)); 
+            ndiffs_sqrt = sqrt(1-diffs(:,n));
+            
+            % TODO: handle sqrt(10e-14)
+            ndiffs_sqrt(ndiffs_sqrt<10e-7) = 0;
             
             % Gain factor computation
             %eleindex = round((elev(:,n)*180/pi+90)/vbap_gtable_res(2));
@@ -374,8 +380,8 @@ for nr = 1:nRes
             z_00(:,n) = inspec*W_S(:, 4*(n-1) + 1);
             
             % prepare for frequency domain convolution
-            ndiffgains = squeeze(permute(interpolateFilters(permute(ndiffgains, [3, 2, 1]), fftsize), [3, 2, 1]));
-            z_00 = interpolateSpectrum(z_00, fftsize);
+            ndiffgains = squeeze(permute(interpolateFilters(permute(ndiffgains, [3, 2, 1]), fftsize_syn), [3, 2, 1]));
+            z_00 = interpolateSpectrum(z_00, fftsize_syn);
             
             % apply filter
             outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*z_00(:,n)*ones(1,2));
@@ -403,8 +409,8 @@ for nr = 1:nRes
             end % encode 
             outspec_diff = zeros(nBins_syn, 2);
             % prepare for frequency domain convolution
-            D_bin = interpolateFilters(D_bin, fftsize);
-            a_diff = interpolateSpectrum(a_diff, fftsize);
+            D_bin = interpolateFilters(D_bin, fftsize_syn);
+            a_diff = interpolateSpectrum(a_diff, fftsize_syn);
 
             for k=1:nBins_syn
                 outspec_diff(k,:) = (squeeze(D_bin(:,:,k)) * a_diff(k,:).').'; % decode
@@ -430,10 +436,10 @@ for nr = 1:nRes
 %          
         % overlap-add synthesis
         lsir_win_ndiff = real(ifft([outspec_ndiff; conj(outspec_ndiff(end-1:-1:2,:))]));
-        lsir_res_ndiff(idx+(0:fftsize-1),:,nr) = lsir_res_ndiff(idx+(0:fftsize-1),:,nr) + lsir_win_ndiff;
+        lsir_res_ndiff(idx+(0:fftsize_syn-1),:,nr) = lsir_res_ndiff(idx+(0:fftsize_syn-1),:,nr) + lsir_win_ndiff;
         if pars.RENDER_DIFFUSE ~= 0
             lsir_win_diff = real(ifft([outspec_diff; conj(outspec_diff(end-1:-1:2,:))]));
-            lsir_res_diff(idx+(0:fftsize-1),:,nr) = lsir_res_diff(idx+(0:fftsize-1),:,nr) + lsir_win_diff;
+            lsir_res_diff(idx+(0:fftsize_syn-1),:,nr) = lsir_res_diff(idx+(0:fftsize_syn-1),:,nr) + lsir_win_diff;
         end
         
         % advance sample pointer

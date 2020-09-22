@@ -5,7 +5,8 @@ function [decMtx, decFilters, C, ild, itd, cll, ambihrtfs, ambihrirs] = getAmbis
 
 nHRTF = size(hrtfs,2);
 nBins = size(hrtfs,3);
-if nargin<6, weights = ones(nHRTF,1)/nHRTF; end
+nSH = (order+1)^2;
+if nargin<6, weights = ones(nHRTF,1)/nHRTF; end  % TODO: Check, 4pi?
 W = diag(weights);
 
 Y_na = getRSH(order, hrtf_dirs_deg);
@@ -16,7 +17,9 @@ f = (0:nFFT/2)*fs/nFFT;
 cutoff = 1500;
 [~,kk_cutoff] = min(abs(f-cutoff));
 
+
 % Solution matrix
+B_magls = zeros(nSH, 2, nBins);
 for kk=1:nBins
     if kk<kk_cutoff 
         H = hrtfs(:,:,kk);
@@ -34,8 +37,9 @@ for kk=1:nBins
         H_mod = abs(hrtfs(:,:,kk)).*exp(1i*phiH_prev);
         B_magls(:,:,kk) = (Y_na*W*Y_na')\(Y_na*W*H_mod');
     end
-    decMtx(:,:,kk) = B_magls(:,:,kk)';
 end
+decMtx = conj(permute(B_magls, [2, 1, 3]));  % B_magls(:,:,kk)'
+
 
 % Time-domain filters
 if nargout>1
