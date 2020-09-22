@@ -68,7 +68,7 @@ pars.chOrdering = 'ACN'; % 'ACN', or 'WXYZ' (deprecated/first-order only)
 pars.normScheme = 'N3D'; % 'N3D', or 'SN3D'
 pars.fs = fs;  
 % Specify windowing size, in samples, (note HOSIRR employs 50% overlap)
-pars.multires_winsize = 128;q
+pars.multires_winsize = 128;
 pars.multires_xovers = [ ];   
 % or if you want to use the multi-resolution STFT option, e.g.:
 %    512 samples hop size up to 500 Hz, then:
