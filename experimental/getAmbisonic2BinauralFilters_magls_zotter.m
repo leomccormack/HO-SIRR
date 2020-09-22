@@ -40,11 +40,10 @@ for kk=1:nBins
 end
 decMtx = conj(permute(B_magls, [2, 1, 3]));  % B_magls(:,:,kk)'
 
-
 % Time-domain filters
 if nargout>1
     decFilters = cat(3, decMtx, conj(decMtx(:,:,end-1:-1:2)));
-    decFilters = ifft(decFilters,[],3);
+    decFilters = real(ifft(decFilters,[],3));
     decFilters = permute(decFilters,[3 2 1]);
 end
 % Reconstructed hrtfs, diffuse-field coherence matrix, ITDs, ILDs
