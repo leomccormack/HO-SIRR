@@ -68,7 +68,7 @@ pars.chOrdering = 'ACN'; % 'ACN', or 'WXYZ' (deprecated/first-order only)
 pars.normScheme = 'N3D'; % 'N3D', or 'SN3D'
 pars.fs = fs;  
 % Specify windowing size, in samples, (note HOSIRR employs 50% overlap)
-pars.multires_winsize = 1024;  
+pars.multires_winsize = 128;q
 pars.multires_xovers = [ ];   
 % or if you want to use the multi-resolution STFT option, e.g.:
 %    512 samples hop size up to 500 Hz, then:
@@ -125,10 +125,13 @@ pars.hrtf_sofa_path = '/home/chris/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto20
 
 assert(isfile(pars.hrtf_sofa_path))
 pars.BROADBAND_FIRST_PEAK = 0;
-[lsir, ~] = HOSIRR_bin(sh_rir, pars);
-audiowrite(['HOSIRR_o' num2str(demo_order) '_bin.wav'], 0.9.*lsir, fs);
+[sirr_bin, ~, ~, pars] = HOSIRR_bin(sh_rir, pars);
+audiowrite(['HOSIRR_o' num2str(demo_order) '_bin.wav'], 0.9.*sirr_bin, fs);
 
- 
-
-
-
+LISTEN = true
+if LISTEN
+hrir_0 = pars.hrirs(:, :, 6);
+sound(fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1)), fs)
+pause(2)
+sound(sirr_bin, fs)
+end

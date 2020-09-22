@@ -144,17 +144,19 @@ else
 end
 
 %% INTIT HRTFS
-hrir = ncread(pars.hrtf_sofa_path,'Data.IR');
+hrirs = ncread(pars.hrtf_sofa_path,'Data.IR');
 hrir_dirs_deg = ncread(pars.hrtf_sofa_path,'SourcePosition');
-numHrirs = size(hrir, 3);
+numHrirs = size(hrirs, 3);
+lenHrirs = size(hrirs, 1);
 
-itd = computeITDfromXCorr(hrir, pars.fs);
+itd = computeITDfromXCorr(hrirs, pars.fs);
 %hrtf_mtx_ipd = HRTFtoFilterbankCoeffs(hrir, afCenterFreq48000, itd, 1);
 
 %pars.hrtfs = permute(hrtf_mtx_ipd, [2 3 1]);           % 2 x nHRTF x nBands
 %pars.hrtfs_mag = abs(pars.hrtfs);
 hrir_dirs_deg = hrir_dirs_deg(1:2,:).'; %         % nHRTF x 2     (deg)
 pars.hrtf_dirs_deg = hrir_dirs_deg;
+pars.hrirs = hrirs;
 pars.hrtf_itd = itd;        % nHRTF x 1 
 pars.hrtf_vbapTableRes = [2 5]; % resolution azim/elev in degs
 vbapTable = getGainTable(pars.hrtf_dirs_deg, pars.hrtf_vbapTableRes);
@@ -202,7 +204,8 @@ end
 clear insig_pad
   
 % time-frequency processing for each frequency region
-maxfftsize = 2*maxWinsize; 
+assert(maxWinsize <= lenHrirs)  % for now
+maxfftsize = 2*lenHrirs;
 lsir_res_ndiff = zeros(lSig + 2*maxfftsize + xover_order, 2, nRes);  % 2 ears
 lsir_res_diff = zeros(lSig + 2*maxfftsize + xover_order, 2, nRes); 
 
@@ -211,11 +214,12 @@ for nr = 1:nRes
     disp(['Processing frequency region no. ' num2str(nr)]);
     winsize = pars.multires_winsize(nr);
     hopsize = winsize/2; % half the window size time-resolution
-    nBins_anl = winsize/2 + 1; % nBins used for analysis
+    nBins_anl = lenHrirs/2+1; % nBins used for analysis
     
-    fftsize_syn = 2*winsize; % double the window size for FD convolution, one more than necessary
+    % Assumes win < hrir
+    fftsize_syn = 2*lenHrirs; % double the window size for FD convolution, one more than necessary.
     nBins_syn = fftsize_syn/2 + 1; % nBins used for synthesis 
-    pars.centerfreqs_anl = (0:winsize/2)'*pars.fs/winsize;
+    pars.centerfreqs_anl = (0:nBins_anl-1)'*pars.fs/lenHrirs;
     if pars.BROADBAND_DIFFUSENESS
         if nr==nRes
             [~,maxDiffFreq_Ind] = min(abs(pars.centerfreqs_anl-min(pars.maxDiffFreq_Hz)));
@@ -225,9 +229,9 @@ for nr = 1:nRes
     end   
     
     % Prepare HRTFs
-    hrtfs = fft(hrir, winsize, 1);  % TODO truncates
+    hrtfs = fft(hrirs, lenHrirs, 1);
     %hrtfs_syn = fft(hrir, fftsize, 1);
-    if mod(size(hrir, 1), 2)
+    if mod(size(hrirs, 1), 2)
         error('not implemented')
     else  % even
         hrtfs = hrtfs(1:nBins_anl, :, :);  % pos half
@@ -291,7 +295,7 @@ for nr = 1:nRes
     while idx + maxWinsize <= lSig + 2*maxWinsize  
         % Window input and transform to frequency domain
         insig_win = win*ones(1,nSH) .* shir_res(idx+(0:winsize-1),:,nr);
-        inspec = fft(insig_win);
+        inspec = fft(insig_win, lenHrirs);  % interpolates
         inspec = inspec(1:nBins_anl,:); % keep up to nyquist
          
         %%% SIRR ANALYSIS %%%
@@ -361,12 +365,12 @@ for nr = 1:nRes
             %gains = gtable(index,:);  
               
             hrtf_interp = interpHRTFs(azim, elev, pars);
-             
+            
             % apply ndiff gain to hrtf
             if pars.RENDER_DIFFUSE
                 ndiffgains = hrtf_interp .* (ndiffs_sqrt*ones(1,2)); 
             else
-                ndiffgains = hrtf_interp;  % TODO????????
+                ndiffgains = hrtf_interp * 1;
             end
             
             % Interpolate panning filters 
@@ -756,10 +760,14 @@ end
 
 end
  
-function hrtf_interp = interpHRTFs(azi, elev, pars)
+function hrtf_interp = interpHRTFs(azi, elev, pars, freq_bins)
 
-    nBins = length(azi);
+    if nargin < 4
+        freq_bins = pars.centerfreqs_anl;
+    end
+    nBins = length(freq_bins);
     hrtf_interp = zeros(nBins, 2);
+
 
     % find closest pre-computed VBAP direction
     az_res = pars.hrtf_vbapTableRes(1); el_res = pars.hrtf_vbapTableRes(2);
@@ -777,7 +785,7 @@ function hrtf_interp = interpHRTFs(azi, elev, pars)
         mags_interp = weights3(k,:) * mags3_nd;
         
         % convert ITDs to phase differences -pi~pi
-        ipd_interp = mod(2*pi*pars.centerfreqs_anl(k)*itd_interp + pi, 2*pi) - pi;
+        ipd_interp = mod(2*pi*freq_bins(k)*itd_interp + pi, 2*pi) - pi;
 
         % introducing IPDs
         hrtf_interp(k,1) = mags_interp(1,1) .* exp(1i*ipd_interp/2);
