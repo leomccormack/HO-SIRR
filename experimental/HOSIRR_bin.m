@@ -344,6 +344,9 @@ for nr = 1:nRes
             analysis.diff{nr}(:,framecount,n) = diffs(:,n); 
         end 
         
+%         disp('overriden diffs')
+%         diffs(:,:) = 1;
+         
         %%% SIRR SYNTHESIS %%% 
         if pars.RENDER_DIFFUSE
             z_diff = zeros(nBins_syn, numSec); 
@@ -413,11 +416,11 @@ for nr = 1:nRes
             end % encode 
             outspec_diff = zeros(nBins_syn, 2);
             % prepare for frequency domain convolution
-            D_bin = interpolateFilters(D_bin, fftsize_syn);
+            D_bin_interp = interpolateFilters(D_bin, fftsize_syn);
             a_diff = interpolateSpectrum(a_diff, fftsize_syn);
 
             for k=1:nBins_syn
-                outspec_diff(k,:) = (squeeze(D_bin(:,:,k)) * a_diff(k,:).').'; % decode
+                outspec_diff(k,:) = (squeeze(D_bin_interp(:,:,k)) * a_diff(k,:).').'; % decode
             end
         end
         
@@ -431,13 +434,13 @@ for nr = 1:nRes
         analysis.ndiff_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff).^2,2)); 
         analysis.diff_energy{nr}(framecount,1) = mean(sum(abs(outspec_diff).^2,2));
          
-        % ambi_ = mean(sum(abs(a_diff).^2,2)); 
+%         %ambi_ = mean(sum(abs(a_diff).^2,2)); 
 %         sf_ = analysis.sf_energy{nr}(framecount,1); 
 %         ndiff_ = analysis.ndiff_energy{nr}(framecount,1);
 %         diff_ = analysis.diff_energy{nr}(framecount,1);
 %         werew=(diff_+ndiff_)/sf_;
 %         asfadsfwerew=(diff_+ndiff_)-sf_;
-%          
+         
         % overlap-add synthesis
         lsir_win_ndiff = real(ifft([outspec_ndiff; conj(outspec_ndiff(end-1:-1:2,:))]));
         lsir_res_ndiff(idx+(0:fftsize_syn-1),:,nr) = lsir_res_ndiff(idx+(0:fftsize_syn-1),:,nr) + lsir_win_ndiff;
