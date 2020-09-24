@@ -1,4 +1,4 @@
-function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars)
+function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR_bin(shir, pars)
 % Higher-Order Spatial Impulse Response Rendering (HOSIRR)
 % --------------------------------------------------------
 % Multi-resolution Higher-order Spatial Impulse Response Rendering
