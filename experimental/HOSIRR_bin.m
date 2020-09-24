@@ -532,6 +532,7 @@ function M_interp = interpolateFilters(M, fftsize)
 %
 %   Archontis Politis, 12/06/2018
 %   archontis.politis@aalto.fi
+assert(fftsize >= 2*(size(M, 3)-1))  % CFH: Will truncate otherwise
 
 winsize = 2*(size(M,3)-1);
 M_conj = conj(M(:,:,end-1:-1:2));
