@@ -154,10 +154,19 @@ end
 
 if LISTEN
 hrir_0 = pars.hrirs(:, :, 6);
-sound(fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1)), fs)
+sir_0 = fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1));
+sound(sir_0, fs)
 pause(2)
 sound(ls_sirr_bin, fs)
 pause(2)
 sound(sirr_bin, fs)
 pause(2)
 end
+
+%% Plot comparison
+figure; hold on;
+plot(abs(sir_0(1:fs/4, :)), '.')
+plot(abs(sirr_bin(1:fs/4, :)), '.')
+
+legend()
+
