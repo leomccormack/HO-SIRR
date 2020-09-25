@@ -152,10 +152,13 @@ hrir_0 = pars.hrirs(:, :, 6);
 sir_0 = fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1));
 
 if LISTEN
+disp('h0: "input"')
 sound(sir_0, fs)
 pause(2)
+disp('Loudspeaker HOSIRR')
 sound(ls_sirr_bin, fs)
 pause(2)
+disp('Binaural HOSIRR')
 sound(sirr_bin, fs)
 pause(2)
 end
