@@ -367,7 +367,7 @@ for nr = 1:nRes
             %index = aziindex + (eleindex*181) + 1;
             %gains = gtable(index,:);  
               
-            hrtf_interp = interpHRTFs(azim, elev, pars);
+            hrtf_interp = interpHRTFs(rad2deg(azim), rad2deg(elev), pars);  % TODO: Bug in deg???
             
             % apply ndiff gain to hrtf
             if pars.RENDER_DIFFUSE
