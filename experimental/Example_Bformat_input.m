@@ -119,12 +119,12 @@ audiowrite(['HOSIRR_ls_o' num2str(demo_order) '.wav'], 0.9.*sirr_ls_rir, fs);
 
 %% WIP: BINAURAL
 % load HRIRs
-%pars.hrtf_sofa_path = '/Users/holdc1/Documents/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
+pars.hrtf_sofa_path = '/Users/holdc1/Documents/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
 %pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
-pars.hrtf_sofa_path = '/home/chris/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
+%pars.hrtf_sofa_path = '/home/chris/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
 
 assert(isfile(pars.hrtf_sofa_path))
-pars.BROADBAND_FIRST_PEAK = 0;
+pars.BROADBAND_FIRST_PEAK = 1;
 [sirr_bin, ~, ~, pars] = HOSIRR_bin(sh_rir, pars);
 audiowrite(['HOSIRR_o' num2str(demo_order) '_bin.wav'], 0.9.*sirr_bin, fs);
 

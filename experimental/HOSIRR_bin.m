@@ -504,16 +504,26 @@ if pars.BROADBAND_FIRST_PEAK
         shir_direct(:,2).'./sqrt(3);
         shir_direct(:,3).'./sqrt(3);].';   
     I = real(repmat(conj(shir_direct_WXYZ(:,1)),[1 3]).*shir_direct_WXYZ(:,2:4));
-    I = sum(I); 
+    I = sum(I);  % TODO?
     [dir_azim, dir_elev] = cart2sph(I(1,1), I(1,2), I(1,3));
 
     % Gain factor computation
-    eleindex = round((dir_elev*180/pi+90)/vbap_gtable_res(2));
-    aziindex = round(mod(dir_azim*180/pi+180,360)/vbap_gtable_res(1));
-    index = aziindex + (eleindex*181) + 1;
-    dir_gains = gtable(index,:);
-
-    lsir_ndiff = lsir_ndiff + dir_gains .* (shir_direct(:,1)*ones(1,nLS)); 
+%     eleindex = round((dir_elev*180/pi+90)/vbap_gtable_res(2));
+%     aziindex = round(mod(dir_azim*180/pi+180,360)/vbap_gtable_res(1));
+%     index = aziindex + (eleindex*181) + 1;
+%     dir_gains = gtable(index,:);
+%     lsir_ndiff = lsir_ndiff + dir_gains .* (shir_direct(:,1)*ones(1,nLS)); 
+    
+    % Find nearest hrtf to peak DOA, TODO: interpolate?
+    [x_p, y_p, z_p] = sph2cart(dir_azim*pi/180, dir_elev*pi/180, 1);
+    [x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(hrir_dirs_deg(:, 1)*pi/180,...
+                                           hrir_dirs_deg(:, 2)*pi/180, 1);
+    doa_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_p, y_p, z_p].';
+    [~, d_min_k] = max(doa_proj);
+    p_hrirs = pars.hrirs(:, :, d_min_k);
+    
+    % Todo: scale pressure channel?
+    lsir_ndiff = lsir_ndiff + fftfilt(p_hrirs, cat(1, shir_direct(:,1)));  % lots of zeros at the end, no padding
 end 
 
 if pars.RENDER_DIFFUSE
@@ -765,7 +775,7 @@ end
 end
  
 function hrtf_interp = interpHRTFs(azi, elev, pars, freq_bins)
-
+% Azi, Ele in deg
     if nargin < 4
         freq_bins = pars.centerfreqs_anl;
     end
