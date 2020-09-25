@@ -460,12 +460,13 @@ for nr = 1:nRes
     fprintf('\ndone\n')
     
     % remove delay caused by the filter interpolation of gains and circular shift
+    delay = nBins_anl;  % TODO
     tempout = zeros(size(lsir_res_ndiff(:,:,nr)));
-    tempout(1:end-winsize/2,:) = lsir_res_ndiff(winsize/2+1:end,:,nr);
+    tempout(1:end-delay,:) = lsir_res_ndiff(1+delay:end,:,nr);
     lsir_res_ndiff(:,:,nr) = tempout;
     if pars.RENDER_DIFFUSE
         tempout = zeros(size(lsir_res_diff(:,:,nr)));
-        tempout(1:end-winsize/2,:) = lsir_res_diff(winsize/2+1:end,:,nr);
+        tempout(1:end-delay,:) = lsir_res_diff(1+delay:end,:,nr);
         lsir_res_diff(:,:,nr) = tempout;
     end
 end
