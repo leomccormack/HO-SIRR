@@ -133,16 +133,13 @@ audiowrite(['HOSIRR_o' num2str(demo_order) '_bin.wav'], 0.9.*sirr_bin, fs);
 LISTEN = true
 
 for idx_ls = 1:length(pars.ls_dirs_deg)
-
     [x_ls, y_ls, z_ls] = sph2cart(pars.ls_dirs_deg(idx_ls, 1)*pi/180,...
                                   pars.ls_dirs_deg(idx_ls, 2)*pi/180, 1);
     [x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(pars.hrtf_dirs_deg(:, 1)*pi/180,...
                                            pars.hrtf_dirs_deg(:, 2)*pi/180, 1);
-    ls_proj = dot([x_hrfts, y_hrtfs, z_hrtfs], ...
-                  repmat([x_ls, y_ls, z_ls], length(x_hrfts), 1), 2);
+    ls_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_ls, y_ls, z_ls].';
     [d_min, d_min_k] = max(ls_proj);
     ls_hrirs(:, :, idx_ls) = pars.hrirs(:, :, d_min_k);
-
 end
 
 ls_sirr_bin = 0;
@@ -151,10 +148,10 @@ for idx_ls = 1:length(pars.ls_dirs_deg)
         fftfilt(ls_hrirs(:, :, idx_ls) , sirr_ls_rir(:, idx_ls));
 end
 
-
-if LISTEN
 hrir_0 = pars.hrirs(:, :, 6);
 sir_0 = fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1));
+
+if LISTEN
 sound(sir_0, fs)
 pause(2)
 sound(ls_sirr_bin, fs)
@@ -165,8 +162,8 @@ end
 
 %% Plot comparison
 figure; hold on;
-plot(abs(sir_0(1:fs/4, :)), '.')
-plot(abs(sirr_bin(1:fs/4, :)), '.')
-
-legend()
+plot(20*log10(abs(sir_0(1:fs/4, :))), '.')
+plot(20*log10(abs(sirr_bin(1:fs/4, :))), '.')
+ylim([-80, 10])
+legend('l0', 'r0', 'l_{sirr}', 'r_{sirr}')
 
