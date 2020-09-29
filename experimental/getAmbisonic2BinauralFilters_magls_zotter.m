@@ -6,7 +6,7 @@ function [decMtx, decFilters, C, ild, itd, cll, ambihrtfs, ambihrirs] = getAmbis
 nHRTF = size(hrtfs,2);
 nBins = size(hrtfs,3);
 nSH = (order+1)^2;
-if nargin<6, weights = ones(nHRTF,1)/nHRTF; end  % TODO: Check, 4pi?
+if nargin<6, weights = 4*pi*ones(nHRTF,1)/nHRTF; end  % should sum to 4pi
 W = diag(weights);
 
 Y_na = getRSH(order, hrtf_dirs_deg);

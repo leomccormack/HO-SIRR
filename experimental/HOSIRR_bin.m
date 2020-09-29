@@ -110,9 +110,9 @@ elseif (strcmp(pars.chOrdering, 'ACN') && strcmp(pars.normScheme, 'SN3D'))
     shir = convert_N3D_SN3D(shir, 'sn2n');
 end
 
-% normalise input to max(|insig|) = 1
 lSig = size(shir,1);
-shir = shir./(max(abs(shir(:,1))));
+% normalise input to max(|insig|) = 1
+% shir = shir./(max(abs(shir(:,1))));
 
 % extract the first highest peak
 if pars.BROADBAND_FIRST_PEAK
@@ -157,6 +157,7 @@ itd = computeITDfromXCorr(hrirs, pars.fs);
 hrir_dirs_deg = hrir_dirs_deg(1:2,:).'; %         % nHRTF x 2     (deg)
 pars.hrtf_dirs_deg = hrir_dirs_deg;
 pars.hrirs = hrirs;
+pars.hrirs_weights = getVoronoiWeights(pars.hrtf_dirs_deg);
 pars.hrtf_itd = itd;        % nHRTF x 1 
 pars.hrtf_vbapTableRes = [2 5]; % resolution azim/elev in degs
 vbapTable = getGainTable(pars.hrtf_dirs_deg, pars.hrtf_vbapTableRes);
@@ -264,11 +265,11 @@ for nr = 1:nRes
             if pars.order==1
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';
                 % TODO: weights
-                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs);
+                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs, pars.hrirs_weights);
             else 
                 Y_enc = sqrt(4*pi).*getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order-1, ls_dirs_deg).';   
-                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs);
+                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs, pars.hrirs_weights);
             end    
     end 
      
@@ -354,7 +355,7 @@ for nr = 1:nRes
             z_diff = zeros(nBins_syn, numSec); 
         end
         z_00 = zeros(nBins_anl, numSec); 
-        W_S = pars.sectorCoeffs./sqrt(4*pi);   
+        W_S = pars.sectorCoeffs./sqrt(4*pi);  % TODO: dangerous...
         for n=1:numSec  
              
             % NON-DIFFUSE PART
@@ -369,7 +370,7 @@ for nr = 1:nRes
             %index = aziindex + (eleindex*181) + 1;
             %gains = gtable(index,:);  
               
-            hrtf_interp = interpHRTFs(rad2deg(azim), rad2deg(elev), pars);  % TODO: Bug in deg???
+            hrtf_interp = interpHRTFs(rad2deg(azim), rad2deg(elev), pars);
             
             % apply ndiff gain to hrtf
             if pars.RENDER_DIFFUSE
@@ -406,7 +407,7 @@ for nr = 1:nRes
                     %diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
                     %diffgains = permute(diffgains, [3 2 1]); 
                     if pars.order == 1
-                        a_diff = repmat(diffgains, [1 nSH]).*inspec./sqrt(nSH);
+                        a_diff = repmat(diffgains, [1 nSH]).*inspec./sqrt(nSH);  % TODO: Why sqrt(4??)
                     else
                         z_diff(:, n) = diffgains .* z_00(:,n); 
                     end
@@ -525,7 +526,7 @@ if pars.BROADBAND_FIRST_PEAK
     [~, d_min_k] = max(doa_proj);
     p_hrirs = pars.hrirs(:, :, d_min_k);
     
-    % Todo: scale pressure channel?
+    % TODO: scale pressure channel?
     lsir_ndiff = lsir_ndiff + fftfilt(p_hrirs, cat(1, shir_direct(:,1)));  % lots of zeros at the end, no padding
 end 
 
