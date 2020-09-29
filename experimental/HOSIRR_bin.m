@@ -344,8 +344,10 @@ for nr = 1:nRes
             analysis.diff{nr}(:,framecount,n) = diffs(:,n); 
         end 
         
-%         disp('overriden diffs')
+        disp('overriden params')
 %         diffs(:,:) = 1;
+        azim(:,:) = 0;
+        elev(:,:) = 0;
          
         %%% SIRR SYNTHESIS %%% 
         if pars.RENDER_DIFFUSE
