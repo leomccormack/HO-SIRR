@@ -126,6 +126,7 @@ pars.hrtf_sofa_path = '/Users/holdc1/Documents/data/HRTFs/Kemar_Aalto_2016/kemar
 assert(isfile(pars.hrtf_sofa_path))
 pars.BROADBAND_FIRST_PEAK = 1;
 [sirr_bin, ~, ~, pars] = HOSIRR_bin(sh_rir, pars);
+sirr_bin = sqrt(4*pi) * sirr_bin;  % TODO: Magic...
 audiowrite(['HOSIRR_o' num2str(demo_order) '_bin.wav'], 0.9.*sirr_bin, fs);
 
 
