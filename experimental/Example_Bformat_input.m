@@ -157,7 +157,7 @@ disp('h0: "input"')
 sound(sir_0, fs)
 pause(2)
 disp('Loudspeaker HOSIRR')
-sound(ls_sirr_bin, fs)
+sound(sqrt(4*pi)*ls_sirr_bin, fs)  % was normnalized to max......
 pause(2)
 disp('Binaural HOSIRR')
 sound(sirr_bin, fs)

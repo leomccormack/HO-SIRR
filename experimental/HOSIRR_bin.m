@@ -215,12 +215,13 @@ for nr = 1:nRes
     disp(['Processing frequency region no. ' num2str(nr)]);
     winsize = pars.multires_winsize(nr);
     hopsize = winsize/2; % half the window size time-resolution
-    nBins_anl = lenHrirs/2+1; % nBins used for analysis
+    nBins_anl = winsize/2+1; % nBins used for analysis
     
     % Assumes win < hrir
-    fftsize_syn = 2*lenHrirs; % double the window size for FD convolution, one more than necessary.
+    fftsize_syn = 2*lenHrirs; % double the window size for FD convolution, TODO: more than necessary.
     nBins_syn = fftsize_syn/2 + 1; % nBins used for synthesis 
-    pars.centerfreqs_anl = (0:nBins_anl-1)'*pars.fs/lenHrirs;
+    pars.centerfreqs_anl = (0: nBins_anl -1)'*pars.fs/winsize;
+    pars.hrtf_centerfreqs = (0: lenHrirs/2+1 -1)'*pars.fs/lenHrirs;
     if pars.BROADBAND_DIFFUSENESS
         if nr==nRes
             [~,maxDiffFreq_Ind] = min(abs(pars.centerfreqs_anl-min(pars.maxDiffFreq_Hz)));
@@ -235,7 +236,7 @@ for nr = 1:nRes
     if mod(size(hrirs, 1), 2)
         error('not implemented')
     else  % even
-        hrtfs = hrtfs(1:nBins_anl, :, :);  % pos half
+        hrtfs = hrtfs(1:lenHrirs/2+1, :, :);  % pos half
     end
     pars.hrtf_mag = abs(hrtfs);
      
@@ -296,7 +297,8 @@ for nr = 1:nRes
     while idx + maxWinsize <= lSig + 2*maxWinsize  
         % Window input and transform to frequency domain
         insig_win = win*ones(1,nSH) .* shir_res(idx+(0:winsize-1),:,nr);
-        inspec = fft(insig_win, lenHrirs);  % interpolates
+        %inspec = fft(insig_win, lenHrirs);  % interpolates
+        inspec = fft(insig_win);
         inspec = inspec(1:nBins_anl,:); % keep up to nyquist
          
         %%% SIRR ANALYSIS %%%
@@ -369,12 +371,20 @@ for nr = 1:nRes
             %aziindex = round(mod(azim(:,n)*180/pi+180,360)/vbap_gtable_res(1));
             %index = aziindex + (eleindex*181) + 1;
             %gains = gtable(index,:);  
-              
-            hrtf_interp = interpHRTFs(rad2deg(azim), rad2deg(elev), pars);
             
+            % Interpolate azi and ele
+            [x, y, z] = sph2cart(azim, elev, 1);
+            x_inp = pchip(pars.centerfreqs_anl, x, pars.hrtf_centerfreqs);
+            y_inp = pchip(pars.centerfreqs_anl, y, pars.hrtf_centerfreqs);
+            z_inp = pchip(pars.centerfreqs_anl, z, pars.hrtf_centerfreqs);
+            [azim_inp, elev_inp, r_inp] = cart2sph(x_inp, y_inp, z_inp);
+
+            hrtf_interp = interpHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
+            
+            ndiffs_sqrt_inp = pchip(pars.centerfreqs_anl, ndiffs_sqrt, pars.hrtf_centerfreqs);
             % apply ndiff gain to hrtf
             if pars.RENDER_DIFFUSE
-                ndiffgains = hrtf_interp .* (ndiffs_sqrt*ones(1,2)); 
+                ndiffgains = hrtf_interp .* (ndiffs_sqrt_inp*ones(1,2)); 
             else
                 ndiffgains = hrtf_interp * 1;
             end
@@ -463,7 +473,7 @@ for nr = 1:nRes
     fprintf('\ndone\n')
     
     % remove delay caused by the filter interpolation of gains and circular shift
-    delay = nBins_anl;  % TODO
+    delay = fftsize_syn/4+1;  % TODO
     tempout = zeros(size(lsir_res_ndiff(:,:,nr)));
     tempout(1:end-delay,:) = lsir_res_ndiff(1+delay:end,:,nr);
     lsir_res_ndiff(:,:,nr) = tempout;
@@ -781,11 +791,11 @@ end
 function hrtf_interp = interpHRTFs(azi, elev, pars, freq_bins)
 % Azi, Ele in deg
     if nargin < 4
-        freq_bins = pars.centerfreqs_anl;
+        freq_bins = pars.hrtf_centerfreqs;
     end
     nBins = length(freq_bins);
+    assert(length(azi) == nBins);
     hrtf_interp = zeros(nBins, 2);
-
 
     % find closest pre-computed VBAP direction
     az_res = pars.hrtf_vbapTableRes(1); el_res = pars.hrtf_vbapTableRes(2);
