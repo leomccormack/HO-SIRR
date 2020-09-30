@@ -32,6 +32,7 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars)
 %                                frequency bin, 1 diffuseness computed up
 %                                to "maxDiffFreq_Hz", and replicated for
 %                                all bins
+%   pars.NORMALIZE_INPUT       : Normalize input to max(|insig|) = 1
 %   pars.maxDiffFreq_Hz        : frequency up to which to compute the
 %                                diffuseness parameter for
 %   pars.alpha_diff            : one-pole alpha value for smoothing diff 
@@ -110,9 +111,12 @@ elseif (strcmp(pars.chOrdering, 'ACN') && strcmp(pars.normScheme, 'SN3D'))
     shir = convert_N3D_SN3D(shir, 'sn2n');
 end
 
-% normalise input to max(|insig|) = 1
 lSig = size(shir,1);
-shir = shir./(max(abs(shir(:,1))));
+
+if isfield(pars,'NORMALIZE_INPUT') && pars.NORMALIZE_INPUT
+    % normalise input to max(|insig|) = 1
+    shir = shir./(max(abs(shir(:,1))));
+end
 
 % extract the first highest peak
 if pars.BROADBAND_FIRST_PEAK
