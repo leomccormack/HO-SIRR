@@ -1,10 +1,11 @@
 clear all, close all %#ok
 % first run: "ims_test_IRs/enerate_test_irs.m" to generate test RIRs
-
 addpath('../')           % for HOSIRR_bin.m 
 addpath('../../')        % for matrixconv.m 
 addpath('ims_test_IRs/') % for the reference RIRs
 addpath('HighTdesigns/') % for the evaluation grid
+
+rng(0)  % Set seed to random generator
 
 % Config
 %ref_name = 'ref_o20_medium_room_leo';
