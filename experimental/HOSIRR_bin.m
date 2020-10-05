@@ -801,6 +801,9 @@ function hrtf_interp = interpHRTFs(azi, elev, pars, freq_bins)
     nBins = length(freq_bins);
     assert(length(azi) == nBins);
     hrtf_interp = zeros(nBins, 2);
+    
+    cutoff = 1500;
+    [~,kk_cutoff] = min(abs(freq_bins-cutoff));
 
     % find closest pre-computed VBAP direction
     az_res = pars.hrtf_vbapTableRes(1); el_res = pars.hrtf_vbapTableRes(2);
@@ -817,9 +820,13 @@ function hrtf_interp = interpHRTFs(azi, elev, pars, freq_bins)
         itd_interp = weights3(k,:) * itds3_nd; 
         mags_interp = weights3(k,:) * mags3_nd;
         
-        % convert ITDs to phase differences -pi~pi
-        ipd_interp = mod(2*pi*freq_bins(k)*itd_interp + pi, 2*pi) - pi;
-
+        if k < kk_cutoff
+            % convert ITDs to phase differences -pi~pi
+            ipd_interp = mod(2*pi*freq_bins(k)*itd_interp + pi, 2*pi) - pi;
+        else
+            ipd_interp = 0;
+        end
+        
         % introducing IPDs
         hrtf_interp(k,1) = mags_interp(1,1) .* exp(1i*ipd_interp/2);
         hrtf_interp(k,2) = mags_interp(1,2) .* exp(-1i*ipd_interp/2);
