@@ -221,7 +221,7 @@ for nr = 1:nRes
     winsize = pars.multires_winsize(nr);
     hopsize = winsize/2; % half the window size time-resolution
     %nBins_anl = winsize/2+1; % nBins used for analysis
-    nBins_anl = 16*winsize/2+1;  % Zero pad / interpolate input with this
+    nBins_anl = 1*winsize/2+1;  % Zero pad / interpolate input with this
     disp(nBins_anl)
     
     % Assumes win <= hrir
@@ -387,8 +387,8 @@ for nr = 1:nRes
             z_inp = pchip(pars.centerfreqs_anl, z, pars.hrtf_centerfreqs);
             [azim_inp, elev_inp, r_inp] = cart2sph(x_inp, y_inp, z_inp);
 
-            %hrtf_interp = interpHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
-            hrtf_interp = nearestHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
+            hrtf_interp = interpHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
+            %hrtf_interp = nearestHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
             
             ndiffs_sqrt_inp = pchip(pars.centerfreqs_anl, ndiffs_sqrt, pars.hrtf_centerfreqs);
             % apply ndiff gain to hrtf
