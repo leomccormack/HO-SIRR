@@ -387,7 +387,8 @@ for nr = 1:nRes
             z_inp = pchip(pars.centerfreqs_anl, z, pars.hrtf_centerfreqs);
             [azim_inp, elev_inp, r_inp] = cart2sph(x_inp, y_inp, z_inp);
 
-            hrtf_interp = interpHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
+            %hrtf_interp = interpHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
+            hrtf_interp = nearestHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
             
             ndiffs_sqrt_inp = pchip(pars.centerfreqs_anl, ndiffs_sqrt, pars.hrtf_centerfreqs);
             % apply ndiff gain to hrtf
@@ -835,6 +836,28 @@ function hrtf_interp = interpHRTFs(azi, elev, pars, freq_bins)
         hrtf_interp(k,2) = mags_interp(1,2) .* exp(-1i*ipd_interp/2);
     end
 end
+
+
+function hrtf_nearest = nearestHRTFs(azi, ele, pars, freq_bins)
+% Azi, Ele in deg
+    if nargin < 4
+        freq_bins = pars.hrtf_centerfreqs;
+    end
+    nBins = length(freq_bins);
+    assert(length(azi) == nBins);
+    hrtf_nearest = zeros(nBins, 2);
+    
+    [x_ls, y_ls, z_ls] = sph2cart(azi*pi/180,...
+                                  ele*pi/180, 1);
+    [x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(pars.hrtf_dirs_deg(:, 1)*pi/180,...
+                                           pars.hrtf_dirs_deg(:, 2)*pi/180, 1);
+    ls_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_ls, y_ls, z_ls].';
+    [d_min, d_min_k] = max(ls_proj);
+    for idx = 1:nBins
+        hrtf_nearest(idx, :) = pars.hrtf_mag(idx, :, d_min_k(idx));
+    end
+end
+
 
 function X_interp = interpolateSpectrum(X, fftsize)
 % Interpolate single sided spectrum X:[t, numCh] by zero padding.
