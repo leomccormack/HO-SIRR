@@ -148,6 +148,7 @@ else
 end
 
 %% INTIT HRTFS
+assert(isfile(pars.hrtf_sofa_path), "SOFA file not found!")
 hrirs = ncread(pars.hrtf_sofa_path,'Data.IR');
 hrir_dirs_deg = ncread(pars.hrtf_sofa_path,'SourcePosition');
 numHrirs = size(hrirs, 3);
