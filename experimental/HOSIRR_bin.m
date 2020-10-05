@@ -220,12 +220,14 @@ for nr = 1:nRes
     disp(['Processing frequency region no. ' num2str(nr)]);
     winsize = pars.multires_winsize(nr);
     hopsize = winsize/2; % half the window size time-resolution
-    nBins_anl = winsize/2+1; % nBins used for analysis
+    %nBins_anl = winsize/2+1; % nBins used for analysis
+    nBins_anl = 1*winsize/2+1;
+    disp(nBins_anl)
     
-    % Assumes win < hrir
+    % Assumes win <= hrir
     fftsize_syn = 2*lenHrirs; % double the window size for FD convolution, TODO: more than necessary.
     nBins_syn = fftsize_syn/2 + 1; % nBins used for synthesis 
-    pars.centerfreqs_anl = (0: nBins_anl -1)'*pars.fs/winsize;
+    pars.centerfreqs_anl = (0: nBins_anl -1)'*pars.fs/((nBins_anl-1)*2);
     pars.hrtf_centerfreqs = (0: lenHrirs/2+1 -1)'*pars.fs/lenHrirs;
     if pars.BROADBAND_DIFFUSENESS
         if nr==nRes
@@ -302,8 +304,9 @@ for nr = 1:nRes
     while idx + maxWinsize <= lSig + 2*maxWinsize  
         % Window input and transform to frequency domain
         insig_win = win*ones(1,nSH) .* shir_res(idx+(0:winsize-1),:,nr);
-        %inspec = fft(insig_win, lenHrirs);  % interpolates
-        inspec = fft(insig_win);
+        %inspec = fft(insig_win);
+        %inspec = inspec(1:nBins_anl,:); % keep up to nyquist
+        inspec = fft(insig_win, (nBins_anl-1)*2);  % interpolates
         inspec = inspec(1:nBins_anl,:); % keep up to nyquist
          
         %%% SIRR ANALYSIS %%%
