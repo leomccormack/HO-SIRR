@@ -28,6 +28,8 @@ pars.alpha_diff = 0.5;
 pars.multires_winsize = 128;  
 pars.multires_xovers = [ ];      
 pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
+pars.hrtf_sofa_path = '/Users/holdc1/Documents/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
+
 tic, [sirr_bin_rir,~,~,~,analysis] = HOSIRR_bin(ref_rir(:,1:(trunc_order+1).^2), pars); toc
 sirr_bin_rir = sirr_bin_rir./max(abs(sirr_bin_rir(:)));
 audiowrite('sirr_bin_rir.wav', sirr_bin_rir, fs, 'BitsPerSample', 24);

@@ -123,7 +123,6 @@ pars.hrtf_sofa_path = '/Users/holdc1/Documents/data/HRTFs/Kemar_Aalto_2016/kemar
 %pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
 %pars.hrtf_sofa_path = '/home/chris/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
 
-assert(isfile(pars.hrtf_sofa_path))
 pars.BROADBAND_FIRST_PEAK = 1;
 [sirr_bin, ~, ~, pars] = HOSIRR_bin(sh_rir, pars);
 sirr_bin = sqrt(4*pi) * sirr_bin;  % TODO: Magic...
