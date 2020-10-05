@@ -165,8 +165,8 @@ end
 
 %% Plot comparison
 figure; hold on;
-plot(20*log10(abs(sir_0(1:fs/4, :))), '.')
 plot(20*log10(abs(sirr_bin(1:fs/4, :))), '.')
+plot(20*log10(abs(sir_0(1:fs/4, :))), '.')
 ylim([-80, 10])
-legend('l0', 'r0', 'l_{sirr}', 'r_{sirr}')
+legend('l_{sirr}', 'r_{sirr}', 'l0', 'r0')
 
