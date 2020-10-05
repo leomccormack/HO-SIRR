@@ -221,7 +221,7 @@ for nr = 1:nRes
     winsize = pars.multires_winsize(nr);
     hopsize = winsize/2; % half the window size time-resolution
     %nBins_anl = winsize/2+1; % nBins used for analysis
-    nBins_anl = 1*winsize/2+1;
+    nBins_anl = 16*winsize/2+1;  % Zero pad / interpolate input with this
     disp(nBins_anl)
     
     % Assumes win <= hrir
