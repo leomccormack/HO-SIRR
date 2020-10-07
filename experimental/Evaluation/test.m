@@ -13,26 +13,27 @@ ref_name = 'ref_o20_medium_room';
 
 % Load reference RIR
 [ref_rir, fs] = audioread([ref_name '.wav']);
+ref_rir = ref_rir/2;  % avoid clipping later
 ref_order = 5;
 
 % Pass order truncated reference through HOSIRR_bin
 trunc_order = 1;
 pars.chOrdering = 'ACN'; 
 pars.normScheme = 'N3D'; 
-pars.fs = fs;   
-pars.BROADBAND_FIRST_PEAK = 0;
+pars.fs = fs;
+pars.BROADBAND_FIRST_PEAK = 1;
 pars.RENDER_DIFFUSE = 1;
-pars.decorrelationType = 'noise';
+pars.decorrelationType = 'phase';
 pars.BROADBAND_DIFFUSENESS = 1;
-pars.maxDiffFreq_Hz = 8000;   
+pars.maxDiffFreq_Hz = 16000;
 pars.alpha_diff = 0.5;
-pars.multires_winsize = 128;  
+pars.multires_winsize = 64;  
 pars.multires_xovers = [ ];      
 pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
 pars.hrtf_sofa_path = '/Users/holdc1/Documents/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
 
 tic, [sirr_bin_rir,~,~,~,analysis] = HOSIRR_bin(ref_rir(:,1:(trunc_order+1).^2), pars); toc
-sirr_bin_rir = sirr_bin_rir./max(abs(sirr_bin_rir(:)));
+%sirr_bin_rir = sirr_bin_rir./max(abs(sirr_bin_rir(:)));
 audiowrite('sirr_bin_rir.wav', sirr_bin_rir, fs, 'BitsPerSample', 24);
  
 % MagLS for comparison
@@ -54,13 +55,13 @@ f = (0:lHRTF/2)'*fs/lHRTF;
 
 % MagLS at same order as HOSIRR_bin
 magls_bin_rir = matrixConvolver(ref_rir(:,1:(trunc_order+1).^2), h_magls, size(h_magls,1));
-magls_bin_rir = magls_bin_rir./max(abs(magls_bin_rir(:)));
+%magls_bin_rir = magls_bin_rir./max(abs(magls_bin_rir(:)));
 audiowrite('magls_bin_rir.wav', magls_bin_rir, fs, 'BitsPerSample', 24);
 
 % "Reference" being higher order MagLS, the current HRTF set is not dense enough to
 % go really high here
 ref_bin_rir = matrixConvolver(ref_rir(:,1:(ref_order+1).^2), h_ref, size(h_ref,1));
-ref_bin_rir = ref_bin_rir./max(abs(ref_bin_rir(:)));
+%ref_bin_rir = ref_bin_rir./max(abs(ref_bin_rir(:)));
 audiowrite('ref_bin_rir.wav', ref_bin_rir, fs, 'BitsPerSample', 24);
 
 
