@@ -223,6 +223,9 @@ for nr = 1:nRes
     %nBins_anl = winsize/2+1; % nBins used for analysis
     nBins_anl = 1*winsize/2+1;  % Zero pad / interpolate input with this
     disp(nBins_anl)
+    % try to prevent something stupid
+    assert(nBins_anl >= winsize/2+1)
+    assert(nBins_anl <= lenHrirs/2+1)
     
     % Assumes win <= hrir
     fftsize_syn = 2*lenHrirs; % double the window size for FD convolution, TODO: more than necessary.
@@ -478,7 +481,7 @@ for nr = 1:nRes
             fprintf('*');
             progress=progress+1; 
         end  
-    end
+    end  % //while
     fprintf('\ndone\n')
     
     % remove delay caused by the filter interpolation of gains and circular shift
@@ -514,7 +517,10 @@ if isequal(pars.decorrelationType, 'noise') && pars.RENDER_DIFFUSE
     %t60 = [0.07 0.07 0.06 0.04 0.02 0.01];
     t60 = [0.2 0.2 0.16 0.12 0.09 0.04];
     fc = [125 250 500 1e3 2e3 4e3];
-    randmat =  synthesizeNoiseReverb(2, pars.fs, t60, fc, 1); 
+    randmat =  synthesizeNoiseReverb(2, pars.fs, t60, fc, 0);
+    % randn is gaussian, normalize (FLATTEN achieves the same)
+    rand_en = sum(randmat.^2, 1);
+    randmat = randmat ./ sqrt(rand_en);
     % Decorrelation
     lsir_diff = fftfilt(randmat, lsir_diff);
     clear randmat;
