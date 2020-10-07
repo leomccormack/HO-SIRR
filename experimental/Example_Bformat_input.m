@@ -78,7 +78,7 @@ pars.multires_xovers = [ ];
 %pars.multires_winsize = [512, 128, 64]; 
 %pars.multires_xovers = [500, 2e3];   
 pars.RENDER_DIFFUSE = 1;
-pars.decorrelationType = 'noise';
+pars.decorrelationType = 'phase';
 % This option isolates the first peak in the response and renders it based
 % on a broad-band DoA estimate. 
 pars.BROADBAND_FIRST_PEAK = 1;  
@@ -125,7 +125,7 @@ pars.hrtf_sofa_path = '/Users/holdc1/Documents/data/HRTFs/Kemar_Aalto_2016/kemar
 
 pars.BROADBAND_FIRST_PEAK = 1;
 [sirr_bin, ~, ~, pars] = HOSIRR_bin(sh_rir, pars);
-sirr_bin = sqrt(4*pi) * sirr_bin;  % TODO: Magic...
+sirr_bin = sirr_bin;  % TODO: Magic...
 audiowrite(['HOSIRR_o' num2str(demo_order) '_bin.wav'], 0.9.*sirr_bin, fs);
 
 
