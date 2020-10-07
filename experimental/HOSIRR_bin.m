@@ -222,7 +222,7 @@ for nr = 1:nRes
     hopsize = winsize/2; % half the window size time-resolution
     %nBins_anl = winsize/2+1; % nBins used for analysis
     nBins_anl = 1*winsize/2+1;  % Zero pad / interpolate input with this
-    disp(nBins_anl)
+    %disp(nBins_anl)
     % try to prevent something stupid
     assert(nBins_anl >= winsize/2+1)
     assert(nBins_anl <= lenHrirs/2+1)
@@ -544,7 +544,7 @@ if pars.BROADBAND_FIRST_PEAK
 %     lsir_ndiff = lsir_ndiff + dir_gains .* (shir_direct(:,1)*ones(1,nLS)); 
     
     % Find nearest hrtf to peak DOA, TODO: interpolate?
-    [x_p, y_p, z_p] = sph2cart(dir_azim*pi/180, dir_elev*pi/180, 1);
+    [x_p, y_p, z_p] = sph2cart(dir_azim, dir_elev, 1);
     [x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(hrir_dirs_deg(:, 1)*pi/180,...
                                            hrir_dirs_deg(:, 2)*pi/180, 1);
     doa_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_p, y_p, z_p].';
@@ -552,11 +552,13 @@ if pars.BROADBAND_FIRST_PEAK
     p_hrirs = pars.hrirs(:, :, d_min_k);
     
     % TODO: scale pressure channel?
-    lsir_ndiff = lsir_ndiff + fftfilt(p_hrirs, cat(1, shir_direct(:,1)));  % lots of zeros at the end, no padding
+    p_first = shir_direct(:,1);
+    lsir_ndiff = lsir_ndiff + fftfilt(p_hrirs, p_first);  % lots of zeros at the end, no padding
 end 
 
 if pars.RENDER_DIFFUSE
-    lsir = lsir_ndiff+lsir_diff;
+    % TODO!!
+    lsir = sqrt(4*pi) * lsir_ndiff + lsir_diff;
 else
     lsir = lsir_ndiff;
     lsir_diff = 0;
