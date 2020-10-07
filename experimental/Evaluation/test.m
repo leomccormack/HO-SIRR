@@ -20,7 +20,7 @@ trunc_order = 1;
 pars.chOrdering = 'ACN'; 
 pars.normScheme = 'N3D'; 
 pars.fs = fs;   
-pars.BROADBAND_FIRST_PEAK = 1;
+pars.BROADBAND_FIRST_PEAK = 0;
 pars.RENDER_DIFFUSE = 1;
 pars.decorrelationType = 'noise';
 pars.BROADBAND_DIFFUSENESS = 1;
@@ -64,4 +64,12 @@ ref_bin_rir = ref_bin_rir./max(abs(ref_bin_rir(:)));
 audiowrite('ref_bin_rir.wav', ref_bin_rir, fs, 'BitsPerSample', 24);
 
 
+%% plot and listen
+sound(ref_bin_rir, fs)
+pause(1.5)
+sound(sirr_bin_rir, fs)
 
+figure; hold on
+plot(ref_bin_rir(1:fs/4, :))
+plot(sirr_bin_rir(1:fs/4, :))
+legend('l_{ref}', 'r_{ref}', 'l_{sirr}', 'r_{sirr}')
