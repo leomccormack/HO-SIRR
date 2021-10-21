@@ -217,6 +217,7 @@ dur = 1;  % in s
 [~, diff_dirs] = getTdesign(21); % approximate diffuse-field with 240 incoherent noise sources
 diff_in = randn(dur*pars.fs, size(diff_dirs,1)) * ...
     sqrt(4*pi)*getRSH(pars.order, diff_dirs*180/pi).';
+diff_in = randn(size(diff_in));
 [~,~,~,pars_out,analysis] = HOSIRR(diff_in, pars);
 
 

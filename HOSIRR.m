@@ -157,7 +157,7 @@ gtable = getGainTable(ls_dirs_deg, vbap_gtable_res);
 [~,sec_dirs_rad] = getTdesign(2*(pars.order));  % TODO: Check grid order
 A_xyz = computeVelCoeffsMtx(pars.order-1);
 %[pars.sectorCoeffs, pars.normSec] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
-[pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = computeSectorCoeffs(pars.order-1, A_xyz, 'cardioid', [], sec_dirs_rad);
+[pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = computeSectorCoeffs(pars.order-1, A_xyz, 'maxRE', [], sec_dirs_rad);
 % amplitude normalisation term
 beta_A = pars.secNorms(1);
 % energy normalisation term
@@ -676,7 +676,7 @@ else
     c_n = b_n ./ sqrt((2*(0:orderSec).'+1) / (4*pi));  % remove m
     w_nm = diag(replicatePerOrder(c_n)) * getRSH(orderSec, [0,0]);
     % amplitude preservation factor
-    beta_A = (sqrt(4*pi)) / (w_nm * numSec);
+    beta_A = (sqrt(4*pi)) / (w_nm(1) * numSec);
     % energy preservation factor (sqrt when applied to signals)
     beta_E = (4*pi) / (w_nm' * w_nm * numSec);
 
