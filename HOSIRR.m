@@ -159,9 +159,9 @@ A_xyz = computeVelCoeffsMtx(pars.order-1);
 %[pars.sectorCoeffs, pars.normSec] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
 [pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = computeSectorCoeffs(pars.order-1, A_xyz, 'cardioid', [], sec_dirs_rad);
 % amplitude normalisation term
-amp_norm = pars.secNorms(1);
+beta_A = pars.secNorms(1);
 % energy normalisation term
-energy_norm = pars.secNorms(2);
+beta_E = pars.secNorms(2);
 
 if pars.order~=1
     pars.sectorDirs = sec_dirs_rad;
@@ -341,7 +341,7 @@ for nr = 1:nRes
             
             % generate non-diffuse stream
             z_00(:,n) = inspec_syn*W_S(:, 4*(n-1) + 1);
-            outspec_ndiff = outspec_ndiff + ndiffgains .* (amp_norm.*z_00(:,n)*ones(1,nLS));
+            outspec_ndiff = outspec_ndiff + ndiffgains .* (beta_A.*z_00(:,n)*ones(1,nLS));
     
             % DIFFUSE PART
             switch pars.RENDER_DIFFUSE
@@ -356,7 +356,7 @@ for nr = 1:nRes
                     if pars.order == 1
                         a_diff = repmat(diffgains, [1 nSH]).*inspec_syn./sqrt(nSH);
                     else
-                        z_diff(:, n) = diffgains .* sqrt(energy_norm) .* z_00(:,n); 
+                        z_diff(:, n) = diffgains .* sqrt(beta_E) .* z_00(:,n); 
                     end
             end  
         end 
@@ -630,7 +630,7 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [sectorCoeffs, secNorms, sec_dirs] = computeSectorCoeffs(orderSec, A_xyz, pattern, norm, sec_dirs)
+function [sectorCoeffs, secNorms, sec_dirs] = computeSectorCoeffs(orderSec, A_xyz, pattern, grid, sec_dirs)
 
 orderVel = orderSec+1;
 
@@ -651,13 +651,13 @@ else
     
     wxyzCoeffs = [];
     if nargin<5
-        switch norm
+        switch grid
             case 'AP'
                 [~, sec_dirs] = getTdesign(orderSec+1); 
             case 'EP'
                 [~, sec_dirs] = getTdesign(2*orderSec);
             otherwise
-                error("Use 'AP' or 'EP' normalization");
+                error("Use 'AP' or 'EP' grid");
         end   
     end
     numSec = size(sec_dirs,1);
@@ -665,23 +665,22 @@ else
     switch pattern
         case 'cardioid'
             b_n = beamWeightsCardioid2Spherical(orderSec);
-            Q = 2*orderSec+1;
         case 'maxRE'
             b_n = beamWeightsMaxEV(orderSec);
-            Q = 4*pi/(b_n'*b_n);            
         case {'pwd', 'hypercardioid'}
             b_n = beamWeightsHypercardioid2Spherical(orderSec);
-            Q = (orderSec+1)^2;
         otherwise
             error("Unknown sector design! " + pattern);
     end
     
-    % amplitude normalisation for sector patterns
-    amp_norm = sqrt(4*pi) / (b_n(1) * numSec);
-    % energy normalisation for sector patterns
-    energy_norm = Q/numSec;
+    c_n = b_n ./ sqrt((2*(0:orderSec).'+1) / (4*pi));  % remove m
+    w_nm = diag(replicatePerOrder(c_n)) * getRSH(orderSec, [0,0]);
+    % amplitude preservation factor
+    beta_A = (sqrt(4*pi)) / (w_nm * numSec);
+    % energy preservation factor (sqrt when applied to signals)
+    beta_E = (4*pi) / (w_nm' * w_nm * numSec);
 
-    secNorms = [amp_norm, energy_norm];
+    secNorms = [beta_A, beta_E];
     
     for ns = 1:numSec
         
