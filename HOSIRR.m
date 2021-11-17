@@ -74,6 +74,8 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars)
 %   leo.mccormack@aalto.fi
 %   Archontis Politis, 12/06/2018
 %   archontis.politis@aalto.fi
+%   Chris Hold, 17/11/2021
+%   christoph.hold@aalto.fi
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
