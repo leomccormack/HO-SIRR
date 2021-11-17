@@ -153,15 +153,34 @@ nLS = size(ls_dirs_deg,1);
 vbap_gtable_res = [2 2]; % azi, elev, step sizes in degrees
 gtable = getGainTable(ls_dirs_deg, vbap_gtable_res); 
  
-% Sector design 
-[~,sec_dirs_rad] = getTdesign(2*(pars.order));  % TODO: Check grid order
+% Sector design
+if (~isfield(pars, 'pattern')), pars.pattern = 'pwd'; end
+if (~isfield(pars, 'ENABLE_DIFF_PR')), pars.ENABLE_DIFF_PR = true; end
+
+[~,sec_dirs_rad] = getTdesign(2*(pars.order));
 A_xyz = computeVelCoeffsMtx(pars.order-1);
-%[pars.sectorCoeffs, pars.normSec] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
-[pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', [], sec_dirs_rad);
+[pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = ...
+    computeSectorCoeffs(pars.order-1, A_xyz, pars.pattern, [], sec_dirs_rad);
 % amplitude normalisation term
 beta_A = pars.secNorms(1);
 % energy normalisation term
 beta_E = pars.secNorms(2);
+% Perfect Reconstruction of diffuse component
+if pars.ENABLE_DIFF_PR
+    switch pars.pattern
+        case 'cardioid'
+            b_n_an = beamWeightsCardioid2Spherical(pars.order-1);
+        case 'maxRE'
+            b_n_an = beamWeightsMaxEV(pars.order-1);
+        case 'pwd'
+            b_n_an = beamWeightsHypercardioid2Spherical(pars.order-1);
+    end
+    c_n = b_n_an ./ sqrt((2*(0:pars.order-1).'+1) / (4*pi));
+    c_n_res = 1./(c_n./c_n(1));
+else
+    c_n_res = ones(pars.order, 1);
+end
+
 
 if pars.order~=1
     pars.sectorDirs = sec_dirs_rad;
@@ -226,7 +245,8 @@ for nr = 1:nRes
             if pars.order==1
                 D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';   
             else 
-                Y_enc = getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
+                Y_enc = diag(replicatePerOrder(c_n_res))*...
+                    getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
                 D_ls = sqrt(4*pi/nLS).*getRSH(pars.order-1, ls_dirs_deg).';   
             end    
     end 
