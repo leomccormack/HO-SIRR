@@ -308,10 +308,6 @@ for nr = 1:nRes
         end 
         
         %%% SIRR SYNTHESIS %%% 
-        
-        % warning('DIFF')
-        % diffs(:, :) = 1;
-        
         if pars.RENDER_DIFFUSE
             z_diff = zeros(nBins_syn, numSec); 
         end
