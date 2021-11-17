@@ -157,7 +157,7 @@ gtable = getGainTable(ls_dirs_deg, vbap_gtable_res);
 [~,sec_dirs_rad] = getTdesign(2*(pars.order));  % TODO: Check grid order
 A_xyz = computeVelCoeffsMtx(pars.order-1);
 %[pars.sectorCoeffs, pars.normSec] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
-[pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = computeSectorCoeffs(pars.order-1, A_xyz, 'maxRE', [], sec_dirs_rad);
+[pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', [], sec_dirs_rad);
 % amplitude normalisation term
 beta_A = pars.secNorms(1);
 % energy normalisation term
@@ -226,7 +226,7 @@ for nr = 1:nRes
             if pars.order==1
                 D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';   
             else 
-                Y_enc = sqrt(4*pi).*getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
+                Y_enc = getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
                 D_ls = sqrt(4*pi/nLS).*getRSH(pars.order-1, ls_dirs_deg).';   
             end    
     end 
@@ -316,7 +316,7 @@ for nr = 1:nRes
             z_diff = zeros(nBins_syn, numSec); 
         end
         z_00 = zeros(nBins_syn, numSec); 
-        W_S = pars.sectorCoeffs./sqrt(4*pi);   
+        W_S = pars.sectorCoeffs;   
         for n=1:numSec  
              
             % NON-DIFFUSE PART
@@ -346,7 +346,7 @@ for nr = 1:nRes
             % DIFFUSE PART
             switch pars.RENDER_DIFFUSE
                 case 0
-                    % No diffuse-field rendering
+                    % No diffuse-fieldendering
                 case 1
                     % New SIRR diffuse stream rendering, based on re-encoding the 
                     % sector signals scaled with the diffuseness estimates
@@ -354,7 +354,7 @@ for nr = 1:nRes
                     diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
                     diffgains = permute(diffgains, [3 2 1]); 
                     if pars.order == 1
-                        a_diff = repmat(diffgains, [1 nSH]).*inspec_syn./sqrt(nSH);
+                        a_diff = repmat(diffgains, [1 nSH]).*inspec_syn;  % Check
                     else
                         z_diff(:, n) = diffgains .* sqrt(beta_E) .* z_00(:,n); 
                     end
@@ -362,7 +362,7 @@ for nr = 1:nRes
         end 
         if pars.RENDER_DIFFUSE
             if pars.order > 1
-                a_diff = z_diff./sqrt(numSec) * Y_enc.'; 
+                a_diff = z_diff * Y_enc.'; 
             end % encode 
             outspec_diff = a_diff * D_ls.'; % decode
         end
@@ -373,18 +373,18 @@ for nr = 1:nRes
             outspec_diff = abs(outspec_diff) .* exp(1i*randomPhi);
         end  
         
-        analysis.sf_energy{nr}(framecount,1) = mean(sum(abs(inspec_syn).^2/nSH,2)); 
+        analysis.sf_energy{nr}(framecount,1) = mean((4*pi/nSH)*sum(abs(inspec_syn).^2,2)); 
         analysis.ndiff_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff).^2,2)); 
         analysis.diff_energy{nr}(framecount,1) = mean(sum(abs(outspec_diff).^2,2));
         analysis.total_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff+outspec_diff).^2,2));
 
          
-        % ambi_ = mean(sum(abs(a_diff).^2,2)); 
-%         sf_ = analysis.sf_energy{nr}(framecount,1); 
-%         ndiff_ = analysis.ndiff_energy{nr}(framecount,1);
-%         diff_ = analysis.diff_energy{nr}(framecount,1);
-%         werew=(diff_+ndiff_)/sf_;
-%         asfadsfwerew=(diff_+ndiff_)-sf_;
+        ambi_ = mean(sum(abs(a_diff).^2,2)); 
+        sf_ = analysis.sf_energy{nr}(framecount,1); 
+        ndiff_ = analysis.ndiff_energy{nr}(framecount,1);
+        diff_ = analysis.diff_energy{nr}(framecount,1);
+        werew=(diff_+ndiff_)/sf_;
+        asfadsfwerew=(diff_+ndiff_)-sf_;
 %          
         % overlap-add synthesis
         lsir_win_ndiff = real(ifft([outspec_ndiff; conj(outspec_ndiff(end-1:-1:2,:))]));
