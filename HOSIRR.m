@@ -177,7 +177,7 @@ else
     shir_res = shir_pad;
 end
 clear insig_pad
-  
+
 % time-frequency processing for each frequency region
 maxfftsize = 2*maxWinsize; 
 lsir_res_ndiff = zeros(lSig + 2*maxfftsize + xover_order, nLS, nRes);
@@ -378,14 +378,7 @@ for nr = 1:nRes
         analysis.diff_energy{nr}(framecount,1) = mean(sum(abs(outspec_diff).^2,2));
         analysis.total_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff+outspec_diff).^2,2));
 
-         
-        ambi_ = mean(sum(abs(a_diff).^2,2)); 
-        sf_ = analysis.sf_energy{nr}(framecount,1); 
-        ndiff_ = analysis.ndiff_energy{nr}(framecount,1);
-        diff_ = analysis.diff_energy{nr}(framecount,1);
-        werew=(diff_+ndiff_)/sf_;
-        asfadsfwerew=(diff_+ndiff_)-sf_;
-%          
+
         % overlap-add synthesis
         lsir_win_ndiff = real(ifft([outspec_ndiff; conj(outspec_ndiff(end-1:-1:2,:))]));
         lsir_res_ndiff(idx+(0:fftsize-1),:,nr) = lsir_res_ndiff(idx+(0:fftsize-1),:,nr) + lsir_win_ndiff;

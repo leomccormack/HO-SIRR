@@ -110,7 +110,7 @@ subplot(4,1,4), imagesc(analysis.diff{1}), colorbar, axis xy, caxis([0 1]), titl
 figure, plot(10*log10(analysis.sf_energy{1})), hold on 
 plot(10*log10(analysis.ndiff_energy{1})), hold on
 plot(10*log10(analysis.diff_energy{1})) 
-title('energy (dB)'), grid on, ylim([-40 20])
+title('energy (dB)'), grid on
 legend('sound-field', 'non-diffuse', 'diffuse')
 figure, plot(analysis.diff{1}(1,:)), title('diffuseness'), grid on, ylim([0 1])
 
@@ -131,7 +131,7 @@ subplot(4,1,4), imagesc(analysis.diff{1}), colorbar, axis xy, caxis([0 1]), titl
 figure, plot(10*log10(analysis.sf_energy{1})), hold on 
 plot(10*log10(analysis.ndiff_energy{1})), hold on
 plot(10*log10(analysis.diff_energy{1})) 
-title('energy (dB)'), grid on, ylim([-40 20])
+title('energy (dB)'), grid on
 legend('sound-field', 'non-diffuse', 'diffuse')
 figure, plot(analysis.diff{1}(1,:)), title('diffuseness'), grid on, ylim([0 1])
 
@@ -166,7 +166,7 @@ plot(10*log10(analysis.sf_energy{1}))
 plot(10*log10(analysis.ndiff_energy{1}))
 plot(10*log10(analysis.diff_energy{1}))
 plot(10*log10(analysis.total_energy{1}))
-ylabel('energy (dB)'), ylim([-40 20])
+ylabel('energy (dB)')
 legend('sound-field', 'non-diffuse', 'diffuse', 'total')
 
 % --- Three plane-wave input --- 
@@ -208,7 +208,7 @@ plot(10*log10(analysis.sf_energy{1}))
 plot(10*log10(analysis.ndiff_energy{1}))
 plot(10*log10(analysis.diff_energy{1}))
 plot(10*log10(analysis.total_energy{1}))
-ylabel('energy (dB)'), ylim([-40 20])
+ylabel('energy (dB)')
 legend('sound-field', 'non-diffuse', 'diffuse', 'total')
 
 
@@ -227,7 +227,7 @@ plot(10*log10(analysis.sf_energy{1}))
 plot(10*log10(analysis.ndiff_energy{1}))
 plot(10*log10(analysis.diff_energy{1}))
 plot(10*log10(analysis.total_energy{1}))
-ylabel('energy (dB)'), ylim([-40 20])
+ylabel('energy (dB)')
 legend('sound-field', 'non-diffuse', 'diffuse', 'total')
 
 clear pars
