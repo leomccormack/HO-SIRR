@@ -110,7 +110,7 @@ subplot(4,1,4), imagesc(analysis.diff{1}), colorbar, axis xy, caxis([0 1]), titl
 figure, plot(10*log10(analysis.sf_energy{1})), hold on 
 plot(10*log10(analysis.ndiff_energy{1})), hold on
 plot(10*log10(analysis.diff_energy{1})) 
-title('energy (dB)'), grid on, ylim([-40 20])
+title('energy (dB)'), grid on
 legend('sound-field', 'non-diffuse', 'diffuse')
 figure, plot(analysis.diff{1}(1,:)), title('diffuseness'), grid on, ylim([0 1])
 
@@ -131,7 +131,7 @@ subplot(4,1,4), imagesc(analysis.diff{1}), colorbar, axis xy, caxis([0 1]), titl
 figure, plot(10*log10(analysis.sf_energy{1})), hold on 
 plot(10*log10(analysis.ndiff_energy{1})), hold on
 plot(10*log10(analysis.diff_energy{1})) 
-title('energy (dB)'), grid on, ylim([-40 20])
+title('energy (dB)'), grid on
 legend('sound-field', 'non-diffuse', 'diffuse')
 figure, plot(analysis.diff{1}(1,:)), title('diffuseness'), grid on, ylim([0 1])
 
@@ -148,17 +148,31 @@ pars.multires_xovers = [];
 pars.RENDER_DIFFUSE = 1;
 pars.BROADBAND_FIRST_PEAK = 1;   
 pars.nBroadbandPeaks = 1;    
-pars.decorrelationType = 'noise'; 
+pars.decorrelationType = 'phase';  % TODO plotting only correct with phase, as noise happens after 
 pars.BROADBAND_DIFFUSENESS = 1;
 pars.maxDiffFreq_Hz = 3000;  
 pars.alpha_diff = 0.5;
 pars.chOrdering = 'ACN';
 pars.normScheme = 'N3D';
 
-% --- Three plane-wave input --- 
-src_dir = [26 15; 153 -15; -116 -15]; % plane-waves landing in sectors: 1, 5, and 16
+% --- Single plane-wave input --- 
+src_dir = [0 0]; % single pw
 shir = randn(pars.fs, size(src_dir,1)) * (sqrt(4*pi).*getRSH(pars.order, src_dir)).';
-[~,~,~,~,analysis] = HOSIRR(shir, pars);
+[~,~,~,pars_out,analysis] = HOSIRR(shir, pars);
+
+figure, grid on, hold on; 
+title('Single PW')
+plot(10*log10(analysis.sf_energy{1}))
+plot(10*log10(analysis.ndiff_energy{1}))
+plot(10*log10(analysis.diff_energy{1}))
+plot(10*log10(analysis.total_energy{1}))
+ylabel('energy (dB)')
+legend('sound-field', 'non-diffuse', 'diffuse', 'total')
+
+% --- Three plane-wave input --- 
+src_dir = rad2deg(pars_out.sectorDirs([1, 5, 16], :));  % plane-waves landing in sectors: 1, 5, and 16
+shir = randn(pars.fs, size(src_dir,1)) * (sqrt(4*pi).*getRSH(pars.order, src_dir)).';
+[~,~,~,pars_out,analysis] = HOSIRR(shir, pars);
 
 % In this case, for sectors (1,5,16) we would expect:
 % - [azimuth elevation] should correspond to 'src_dir' for their respective sectors 
@@ -188,11 +202,33 @@ for sectorIndex = [2,20]
 end 
 % - Output non-diffuse energy should be similar to input sound-field 
 %   energy, and also much higher than the diffuse energy
-figure, plot(10*log10(analysis.sf_energy{1})), hold on 
-plot(10*log10(analysis.ndiff_energy{1})), hold on
-plot(10*log10(analysis.diff_energy{1})) 
-title('energy (dB)'), grid on, ylim([-40 20])
-legend('sound-field', 'non-diffuse', 'diffuse')
+figure, grid on, hold on; 
+title('Three PWs')
+plot(10*log10(analysis.sf_energy{1}))
+plot(10*log10(analysis.ndiff_energy{1}))
+plot(10*log10(analysis.diff_energy{1}))
+plot(10*log10(analysis.total_energy{1}))
+ylabel('energy (dB)')
+legend('sound-field', 'non-diffuse', 'diffuse', 'total')
+
+
+% --- Diffuse-field input --- 
+dur = 1;  % in s
+[~, diff_dirs] = getTdesign(21); % approximate diffuse-field with 240 incoherent noise sources
+diff_in = randn(dur*pars.fs, size(diff_dirs,1)) * ...
+    sqrt(4*pi)*getRSH(pars.order, diff_dirs*180/pi).';
+diff_in = randn(size(diff_in));
+[~,~,~,pars_out,analysis] = HOSIRR(diff_in, pars);
+
+
+figure, grid on, hold on; 
+title('Diffuse Field')
+plot(10*log10(analysis.sf_energy{1}))
+plot(10*log10(analysis.ndiff_energy{1}))
+plot(10*log10(analysis.diff_energy{1}))
+plot(10*log10(analysis.total_energy{1}))
+ylabel('energy (dB)')
+legend('sound-field', 'non-diffuse', 'diffuse', 'total')
 
 clear pars
 
