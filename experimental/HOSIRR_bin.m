@@ -190,10 +190,37 @@ pars.hrtf_vbapTableComp = pars.hrtf_vbapTableComp ./ (sum(pars.hrtf_vbapTableCom
 %gtable = getGainTable(ls_dirs_deg, vbap_gtable_res); 
 
 
-% Sector design 
-[~,sec_dirs_rad] = getTdesign(2*(pars.order)); 
+% Sector design
+if (~isfield(pars, 'pattern')), pars.pattern = 'pwd'; end
+if (~isfield(pars, 'ENABLE_DIFF_PR')), pars.ENABLE_DIFF_PR = true; end
+
+[~,sec_dirs_rad] = getTdesign(2*(pars.order));
 A_xyz = computeVelCoeffsMtx(pars.order-1);
-[pars.sectorCoeffs, pars.normSec] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
+[pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = ...
+    computeSectorCoeffs(pars.order-1, A_xyz, pars.pattern, [], sec_dirs_rad);
+% amplitude normalisation term
+beta_A = pars.secNorms(1);
+% energy normalisation term
+beta_E = pars.secNorms(2);
+% Perfect Reconstruction of diffuse component
+if pars.ENABLE_DIFF_PR
+    switch pars.pattern
+        case 'cardioid'
+            b_n_an = beamWeightsCardioid2Spherical(pars.order-1);
+        case 'maxRE'
+            b_n_an = beamWeightsMaxEV(pars.order-1);
+        case 'pwd'
+            b_n_an = beamWeightsHypercardioid2Spherical(pars.order-1);
+    end
+    c_n = b_n_an ./ sqrt((2*(0:pars.order-1).'+1) / (4*pi));
+    c_n_res = 1./(c_n./c_n(1));
+    % TODO
+    % Bandlimit
+else
+    c_n_res = ones(pars.order, 1);
+end
+
+
 if pars.order~=1
     pars.sectorDirs = sec_dirs_rad;
 end 
@@ -275,12 +302,11 @@ for nr = 1:nRes
             % SHs, and then decoding them to the loudspeaker setup
             if pars.order==1
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';
-                % TODO: weights
                 D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs, pars.hrirs_weights);
             else 
-                Y_enc = sqrt(4*pi).*getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
+                Y_enc = getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order-1, ls_dirs_deg).';   
-                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs, pars.hrirs_weights);
+                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order-1, [], pars.fs, pars.hrirs_weights);
             end    
     end 
      
@@ -309,7 +335,7 @@ for nr = 1:nRes
         insig_win = win*ones(1,nSH) .* shir_res(idx+(0:winsize-1),:,nr);
         %inspec = fft(insig_win);
         %inspec = inspec(1:nBins_anl,:); % keep up to nyquist
-        inspec = fft(insig_win, (nBins_anl-1)*2);  % interpolates
+        inspec = fft(insig_win, (nBins_anl-1)*2);  % interpolates if needed
         inspec = inspec(1:nBins_anl,:); % keep up to nyquist
          
         %%% SIRR ANALYSIS %%%
@@ -365,14 +391,15 @@ for nr = 1:nRes
          
         %%% SIRR SYNTHESIS %%% 
         if pars.RENDER_DIFFUSE
-            z_diff = zeros(nBins_syn, numSec); 
+            z_diff = zeros(nBins_anl, numSec); 
         end
         z_00 = zeros(nBins_anl, numSec); 
-        W_S = pars.sectorCoeffs./sqrt(4*pi);  % TODO: dangerous...
+        W_S = pars.sectorCoeffs;
         for n=1:numSec  
              
             % NON-DIFFUSE PART
-            ndiffs_sqrt = sqrt(1-diffs(:,n));
+            diffs_interp = pchip(pars.centerfreqs_anl, diffs(:,n), pars.hrtf_centerfreqs);
+            ndiffs_sqrt = sqrt(1-diffs_interp);
             
             % TODO: handle sqrt(10e-14)
             ndiffs_sqrt(ndiffs_sqrt<10e-7) = 0;
@@ -384,7 +411,7 @@ for nr = 1:nRes
             %gains = gtable(index,:);  
             
             % Interpolate azi and ele
-            [x, y, z] = sph2cart(azim, elev, 1);
+            [x, y, z] = sph2cart(azim(:,n), elev(:,n), 1);
             x_inp = pchip(pars.centerfreqs_anl, x, pars.hrtf_centerfreqs);
             y_inp = pchip(pars.centerfreqs_anl, y, pars.hrtf_centerfreqs);
             z_inp = pchip(pars.centerfreqs_anl, z, pars.hrtf_centerfreqs);
@@ -393,10 +420,10 @@ for nr = 1:nRes
             hrtf_interp = interpHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
             %hrtf_interp = nearestHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
             
-            ndiffs_sqrt_inp = pchip(pars.centerfreqs_anl, ndiffs_sqrt, pars.hrtf_centerfreqs);
+            %ndiffs_sqrt_inp = pchip(pars.centerfreqs_anl, ndiffs_sqrt, pars.hrtf_centerfreqs);
             % apply ndiff gain to hrtf
             if pars.RENDER_DIFFUSE
-                ndiffgains = hrtf_interp .* (ndiffs_sqrt_inp*ones(1,2)); 
+                ndiffgains = hrtf_interp .* (ndiffs_sqrt*ones(1,2)); 
             else
                 ndiffgains = hrtf_interp * 1;
             end
@@ -404,19 +431,16 @@ for nr = 1:nRes
             % Interpolate panning filters 
             %ndiffgains = interpolateFilters(permute(ndiffgains, [3 2 1]), fftsize);
             %ndiffgains = permute(ndiffgains, [3 2 1]);
-
-            % Normalisation term
-            nnorm = sqrt(pars.normSec);
             
             % generate non-diffuse stream
             z_00(:,n) = inspec*W_S(:, 4*(n-1) + 1);
             
             % prepare for frequency domain convolution
             ndiffgains = squeeze(permute(interpolateFilters(permute(ndiffgains, [3, 2, 1]), fftsize_syn), [3, 2, 1]));
-            z_00 = interpolateSpectrum(z_00, fftsize_syn);
+            z_00_int = interpolateSpectrum(z_00(:,n), fftsize_syn);
             
             % apply filter
-            outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*z_00(:,n)*ones(1,2));
+            outspec_ndiff = outspec_ndiff + ndiffgains .* (beta_A.*z_00_int*ones(1,2));
     
             % DIFFUSE PART
             switch pars.RENDER_DIFFUSE
@@ -425,19 +449,19 @@ for nr = 1:nRes
                 case 1
                     % New SIRR diffuse stream rendering, based on re-encoding the 
                     % sector signals scaled with the diffuseness estimates
-                    diffgains = sqrt(diffs(:,n));  
+                    diffgains = sqrt(diffs(:,n));  % TODO use interp
                     %diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
                     %diffgains = permute(diffgains, [3 2 1]); 
-                    if pars.order == 1
-                        a_diff = repmat(diffgains, [1 nSH]).*inspec./sqrt(nSH);  % TODO: Why sqrt(4??)
-                    else
-                        z_diff(:, n) = diffgains .* z_00(:,n); 
+                    if pars.order > 1
+                        z_diff(:, n) = diffgains .* sqrt(beta_E).* z_00(:,n); 
                     end
             end  
         end 
         if pars.RENDER_DIFFUSE
-            if pars.order > 1
-                a_diff = z_diff./sqrt(numSec) * Y_enc.'; 
+            if pars.order == 1
+                a_diff = repmat(diffgains, [1 nSH]).*inspec;  % Check
+            else
+                a_diff = z_diff * Y_enc.'; 
             end % encode 
             outspec_diff = zeros(nBins_syn, 2);
             % prepare for frequency domain convolution
@@ -533,7 +557,7 @@ if pars.BROADBAND_FIRST_PEAK
         shir_direct(:,2).'./sqrt(3);
         shir_direct(:,3).'./sqrt(3);].';   
     I = real(repmat(conj(shir_direct_WXYZ(:,1)),[1 3]).*shir_direct_WXYZ(:,2:4));
-    I = sum(I);  % TODO?
+    I = sum(I);
     [dir_azim, dir_elev] = cart2sph(I(1,1), I(1,2), I(1,3));
 
     % Gain factor computation
@@ -552,13 +576,12 @@ if pars.BROADBAND_FIRST_PEAK
     p_hrirs = pars.hrirs(:, :, d_min_k);
     
     % TODO: scale pressure channel?
-    p_first = shir_direct(:,1);
+    p_first = sqrt(4*pi) * shir_direct(:,1);
     lsir_ndiff = lsir_ndiff + fftfilt(p_hrirs, p_first);  % lots of zeros at the end, no padding
 end 
 
 if pars.RENDER_DIFFUSE
-    % TODO!!
-    lsir = sqrt(4*pi) * lsir_ndiff + lsir_diff;
+    lsir = lsir_ndiff + lsir_diff;
 else
     lsir = lsir_ndiff;
     lsir_diff = 0;
@@ -581,6 +604,17 @@ M_ifft = ifft(cat(3, M, M_conj), [], 3);
 M_ifft = M_ifft(:,:, [(winsize/2+1:end) (1:winsize/2)]); % flip
 M_interp = fft(M_ifft, fftsize, 3); % interpolate to fftsize
 M_interp = M_interp(:,:,1:fftsize/2+1); % keep up to nyquist
+end
+
+function X_interp = interpolateSpectrum(X, fftsize)
+% Interpolate single sided spectrum X:[t, numCh] by zero padding.
+assert(fftsize >= 2*(size(X, 1)-1))  % Will truncate otherwise
+assert(mod(size(X, 1), 2) == 1)  % needs to be odd single sided spectrum
+
+X_full = cat(1, X, conj(X(end-1:-1:2, :)));  % mirror
+x = ifft(X_full, [], 1);
+X_pad = fft(x, fftsize);  % interpolate spectrum by zero padding
+X_interp = X_pad(1:fftsize/2+1, :);  % return single sided spectrum
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -726,13 +760,7 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [sectorCoeffs, normSec] = computeSectorCoeffs(orderSec, A_xyz, pattern, sec_dirs, norm)
-% COMPUTESECTORCOEFFS Computes the beamforming matrices of sector and 
-% velocity coefficients for energy-preserving sectors, for orderSec, 
-% for real SH.
-%
-%   Archontis Politis, 12/06/2018
-%   archontis.politis@aalto.fi
+function [sectorCoeffs, secNorms, sec_dirs] = computeSectorCoeffs(orderSec, A_xyz, pattern, grid, sec_dirs)
 
 orderVel = orderSec+1;
 
@@ -745,50 +773,51 @@ if orderSec == 0
          0       sqrt(4*pi/3)   0               0];
 
     % convert to real SH coefficients to use with the real signals
-    normSec = 1;
-    sectorCoeffs = normSec*wxyzCoeffs;
-    
+    secNorms = [1 1];
+    sectorCoeffs = wxyzCoeffs;
+    sec_dirs = [];  % or [0, 0], empty more explicit
+
 else
     
     wxyzCoeffs = [];
-    if nargin<4
-        switch norm
+    if nargin<5
+        switch grid
             case 'AP'
                 [~, sec_dirs] = getTdesign(orderSec+1); 
             case 'EP'
                 [~, sec_dirs] = getTdesign(2*orderSec);
-        end 
-        
+            otherwise
+                error("Use 'AP' or 'EP' grid");
+        end   
     end
     numSec = size(sec_dirs,1);
     
     switch pattern
         case 'cardioid'
             b_n = beamWeightsCardioid2Spherical(orderSec);
-            Q = 2*orderSec+1;
         case 'maxRE'
             b_n = beamWeightsMaxEV(orderSec);
-            Q = 4*pi/(b_n'*b_n);            
-        case 'pwd'
+        case {'pwd', 'hypercardioid'}
             b_n = beamWeightsHypercardioid2Spherical(orderSec);
-            Q = (orderSec+1)^2;            
+        otherwise
+            error("Unknown sector design! " + pattern);
     end
     
-    switch norm
-        case 'AP'
-            % amplitude normalisation for sector patterns
-            normSec = (orderSec+1)/numSec;
-        case 'EP'
-            % energy normalisation for sector patterns
-            normSec = Q/numSec;
-    end 
+    c_n = b_n ./ sqrt((2*(0:orderSec).'+1) / (4*pi));  % remove m
+    w_nm = diag(replicatePerOrder(c_n)) * getRSH(orderSec, [0,0]);
+    % amplitude preservation factor
+    beta_A = (sqrt(4*pi)) / (w_nm(1) * numSec);
+    % energy preservation factor (sqrt when applied to signals)
+    beta_E = (4*pi) / (w_nm' * w_nm * numSec);
+
+    secNorms = [beta_A, beta_E];
     
     for ns = 1:numSec
         
         % rotate the pattern by rotating the coefficients
         azi_sec = sec_dirs(ns, 1);
         polar_sec = pi/2-sec_dirs(ns, 2); % from elevation to inclination
-        c_nm = sqrt(normSec) * rotateAxisCoeffs(b_n, polar_sec, azi_sec, 'complex');
+        c_nm = rotateAxisCoeffs(b_n, polar_sec, azi_sec, 'complex');  % CFH: no compensation here
         % get the velocity coeffs
         x_nm = A_xyz(1:(orderVel+1)^2, 1:(orderSec+1)^2, 1)*c_nm;
         y_nm = A_xyz(1:(orderVel+1)^2, 1:(orderSec+1)^2, 2)*c_nm;
@@ -802,6 +831,7 @@ else
     % convert to real SH coefficients to use with the real signals
     sectorCoeffs = real(complex2realCoeffs(wxyzCoeffs));
 end
+
 
 end
  
@@ -867,14 +897,5 @@ function hrtf_nearest = nearestHRTFs(azi, ele, pars, freq_bins)
 end
 
 
-function X_interp = interpolateSpectrum(X, fftsize)
-% Interpolate single sided spectrum X:[t, numCh] by zero padding.
-assert(fftsize >= 2*(size(X, 1)-1))  % Will truncate otherwise
-assert(mod(size(X, 1), 2) == 1)  % needs to be odd single sided spectrum
 
-X_full = cat(1, X, conj(X(end-1:-1:2, :)));  % mirror
-x = ifft(X_full, [], 1);
-X_pad = fft(x, fftsize);  % interpolate spectrum by zero padding
-X_interp = X_pad(1:fftsize/2+1, :);  % return single sided spectrum
-end
 
