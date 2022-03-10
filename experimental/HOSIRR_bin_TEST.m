@@ -175,6 +175,7 @@ mono_bir = fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1));
 sound(mono_bir, fs)
 pause(2)
 sound(sirr_bin, fs)
+pause(2)
 end
 
 figure
@@ -182,8 +183,8 @@ subplot(2,1,1)
 plot(mono_bir)
 subplot(2,1, 2)
 plot(sirr_bin)
-rms(mono_bir(5000:end, :))
-rms(sirr_bin(5000:end, :))
+rms(mono_bir(0.1*fs:end-100, :))
+rms(sirr_bin(0.1*fs:end-100, :))
 
 
 %% Compare
@@ -195,8 +196,10 @@ ls_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_ls, y_ls, z_ls].';
 [d_min, d_min_k] = max(ls_proj);
 ls_sigs_bin_l = sum(fftfilt(squeeze(pars.hrirs(:, 1, d_min_k)), sirr_ls_rir), 2);
 ls_sigs_bin_r = sum(fftfilt(squeeze(pars.hrirs(:, 2, d_min_k)), sirr_ls_rir), 2);
+disp("LS HOSIRR")
 sound([ls_sigs_bin_l, ls_sigs_bin_r], fs)
 pause(2)
+disp("Binaural HOSIRR")
 sound(sirr_bin, fs)
 pause(2)
 
@@ -210,10 +213,12 @@ else  % even
 end
 D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]),...
     pars.hrtf_dirs_deg, pars.order, [], pars.fs, pars.hrirs_weights);
-D_bin = ifft(cat(3, D_bin, conj(D_bin(:,:, end-1:-1:2))), [], 1, 'symmetric');
+D_bin = real(ifft(cat(3, D_bin, conj(D_bin(:,:, end-1:-1:2))), [], 1));
 sh_rir_bin_l = sum(fftfilt(squeeze(D_bin(1, :,:)).', sh_rir), 2);
 sh_rir_bin_r = sum(fftfilt(squeeze(D_bin(2, :,:)).', sh_rir), 2);
+disp("MagLS")
 soundsc([sh_rir_bin_l, sh_rir_bin_r], fs)
+pause(2)
 %out2 = matrixConvolver(sh_rir, permute(D_bin,[3, 2, 1]), 2048);
 %soundsc(out2, fs)
 
