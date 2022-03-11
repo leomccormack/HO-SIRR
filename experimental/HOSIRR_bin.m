@@ -302,11 +302,13 @@ for nr = 1:nRes
             % SHs, and then decoding them to the loudspeaker setup
             if pars.order==1
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';
-                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, [], pars.fs, pars.hrirs_weights);
+                D_bin = getAmbisonic2BinauralFilters_magls_zotter(...
+                    permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, pars.fs, 1500, pars.hrirs_weights);
             else 
                 Y_enc = getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order-1, ls_dirs_deg).';   
-                D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order-1, [], pars.fs, pars.hrirs_weights);
+                D_bin = getAmbisonic2BinauralFilters_magls_zotter(...
+                    permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order-1, pars.fs, 1500, pars.hrirs_weights);
             end    
     end 
      

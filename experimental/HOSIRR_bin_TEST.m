@@ -4,7 +4,7 @@ clear all, close all, dbstop if error %#ok
 addpath '..'
 addpath '../_Simulated_Rooms_' '../_Stimuli_'
 
-demo_order = 5;  
+demo_order = 3;  
 [input_stimulus, fs_in] = audioread('music__KickDrumClicky.wav');
 
 
@@ -24,8 +24,8 @@ pars.maxDiffFreq_Hz = 3000;
 pars.alpha_diff = 0.5;
 pars.chOrdering = 'ACN';
 pars.normScheme = 'N3D';
-pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
-pars.hrtf_sofa_path = '/home/chris/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
+%pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
+pars.hrtf_sofa_path = '~/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
 
 % --- Single plane-wave input --- 
 src_dir = [-45 -45];  % try adding more than 1 plane-wave, to see the first-order analysis break
@@ -159,9 +159,8 @@ audiowrite(['HOSIRR_ls_o' num2str(demo_order) '.wav'], 0.9.*sirr_ls_rir, fs);
 %% WIP: BINAURAL
 disp(' * BINAURAL')
 % load HRIRs
-%pars.hrtf_sofa_path = '/Users/holdc1/Documents/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
 %pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
-pars.hrtf_sofa_path = '/home/chris/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
+pars.hrtf_sofa_path = '~/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
 
 assert(isfile(pars.hrtf_sofa_path))
 pars.BROADBAND_FIRST_PEAK = 0;
@@ -206,19 +205,16 @@ pause(2)
 % Prepare HRTFs
 hrtfs = fft(pars.hrirs, [], 1);
 %hrtfs_syn = fft(hrir, fftsize, 1);
-if mod(size(pars.hrirs, 1), 2)
-    error('not implemented')
-else  % even
-    hrtfs = hrtfs(1:size(pars.hrirs, 1)/2+1, :, :);  % pos half
-end
-D_bin = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]),...
-    pars.hrtf_dirs_deg, pars.order, [], pars.fs, pars.hrirs_weights);
-D_bin = real(ifft(cat(3, D_bin, conj(D_bin(:,:, end-1:-1:2))), [], 1));
-sh_rir_bin_l = sum(fftfilt(squeeze(D_bin(1, :,:)).', sh_rir), 2);
-sh_rir_bin_r = sum(fftfilt(squeeze(D_bin(2, :,:)).', sh_rir), 2);
+assert (mod(size(pars.hrirs, 1)+1, 2))
+hrtfs = hrtfs(1:size(pars.hrirs, 1)/2+1, :, :);  % pos half
+
+[D_bin, D_bin_filters] = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]),...
+    pars.hrtf_dirs_deg, pars.order, pars.fs, 1500, pars.hrirs_weights);
+sh_rir_bin_l = sum(fftfilt(squeeze(D_bin_filters(1, :,:)).', sh_rir), 2);
+sh_rir_bin_r = sum(fftfilt(squeeze(D_bin_filters(2, :,:)).', sh_rir), 2);
 disp("MagLS")
 soundsc([sh_rir_bin_l, sh_rir_bin_r], fs)
 pause(2)
-%out2 = matrixConvolver(sh_rir, permute(D_bin,[3, 2, 1]), 2048);
+%out2 = matrixConvolver(sh_rir, permute(D_bin_filters,[3, 2, 1]), 2048);
 %soundsc(out2, fs)
 
