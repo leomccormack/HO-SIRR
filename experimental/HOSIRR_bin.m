@@ -379,6 +379,12 @@ for nr = 1:nRes
                 %assert(all(diffs(:,n)>=0))
             end 
 
+            % freq smoothing  (avoid sharp modulation)
+            if true
+                diffs(:,n) = medfilt1(diffs(:,n), 4, [], 1, 'truncate');
+                %diffs(:,n) = sgolayfilt(diffs(:,n), 3, 5, [], 1);
+            end
+            
             % storage for estimated parameters over time
             analysis.azim{nr}(:,framecount,n) = azim(:,n);
             analysis.elev{nr}(:,framecount,n) = elev(:,n);
