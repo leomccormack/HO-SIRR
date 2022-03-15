@@ -324,7 +324,7 @@ for nr = 1:nRes
             % storage for estimated parameters over time
             analysis.azim{nr}(:,framecount,n) = azim(:,n);
             analysis.elev{nr}(:,framecount,n) = elev(:,n);
-            assert(energy>=0)
+            assert(all(energy>=0))
             analysis.energy{nr}(:,framecount,n) = energy;
             analysis.diff{nr}(:,framecount,n) = diffs(:,n); 
         end 
