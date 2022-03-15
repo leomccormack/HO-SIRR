@@ -461,7 +461,8 @@ for nr = 1:nRes
                     %diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
                     %diffgains = permute(diffgains, [3 2 1]); 
                     if pars.order > 1
-                        z_diff(:, n) = diffgains .* sqrt(beta_E).* z_00(:,n); 
+                        % Decorrelators not perfect, therefore beta_E as mix
+                        z_diff(:, n) = diffgains .* (0.75*sqrt(beta_E) + 0.25*beta_A) .* z_00(:,n); 
                     end
             end  
         end 
