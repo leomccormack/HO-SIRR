@@ -194,7 +194,7 @@ pars.hrtf_vbapTableComp = pars.hrtf_vbapTableComp ./ (sum(pars.hrtf_vbapTableCom
 if (~isfield(pars, 'pattern')), pars.pattern = 'pwd'; end
 if (~isfield(pars, 'ENABLE_DIFF_PR')), pars.ENABLE_DIFF_PR = true; end
 
-[~,sec_dirs_rad] = getTdesign(2*(pars.order));
+[~,sec_dirs_rad] = getTdesign(2*(max([1, pars.order-1])));  % not consistent with HOSIRR
 A_xyz = computeVelCoeffsMtx(pars.order-1);
 [pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = ...
     computeSectorCoeffs(pars.order-1, A_xyz, pars.pattern, [], sec_dirs_rad);
