@@ -1,5 +1,5 @@
 %%%%% 
-clear all, close all, dbstop if error %#ok
+clear all, close all %, dbstop if error %#ok
 
 addpath '..'
 addpath '../_Simulated_Rooms_' '../_Stimuli_'
@@ -131,8 +131,8 @@ pars.alpha_diff = 0.5;
 
 % 
 % %% EITHER: DEFINE THE SAME LOUDSPEAKER DIRECTIONS AS REFERENCE
-load('DTU_ls_dirs_deg.mat') 
-[~, dirs_rad] = getTdesign(5);
+%load('DTU_ls_dirs_deg.mat') 
+[~, dirs_rad] = getTdesign(2*demo_order+1);  % +1 ?
 pars.ls_dirs_deg = dirs_rad*180/pi;
 % 
 % 
@@ -164,7 +164,7 @@ pars.hrtf_sofa_path = '~/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
 
 assert(isfile(pars.hrtf_sofa_path))
 pars.BROADBAND_FIRST_PEAK = 0;
-[sirr_bin, ~, ~, pars] = HOSIRR_bin(sh_rir, pars);
+[sirr_bin, ~, ~, pars, analysis] = HOSIRR_bin(sh_rir, pars);
 audiowrite(['HOSIRR_o' num2str(demo_order) '_bin.wav'], 0.9.*sirr_bin, fs);
 
 LISTEN = true
@@ -180,8 +180,11 @@ end
 figure
 subplot(2,1,1)
 plot(mono_bir)
+title('Omni')
 subplot(2,1, 2)
 plot(sirr_bin)
+title('SIRR')
+
 rms(mono_bir(0.1*fs:end-100, :))
 rms(sirr_bin(0.1*fs:end-100, :))
 
@@ -204,7 +207,6 @@ pause(2)
 
 % Prepare HRTFs
 hrtfs = fft(pars.hrirs, [], 1);
-%hrtfs_syn = fft(hrir, fftsize, 1);
 assert (mod(size(pars.hrirs, 1)+1, 2))
 hrtfs = hrtfs(1:size(pars.hrirs, 1)/2+1, :, :);  % pos half
 
@@ -217,4 +219,53 @@ soundsc([sh_rir_bin_l, sh_rir_bin_r], fs)
 pause(2)
 %out2 = matrixConvolver(sh_rir, permute(D_bin_filters,[3, 2, 1]), 2048);
 %soundsc(out2, fs)
+
+%%
+figure
+subplot(3,1,1)
+plot([ls_sigs_bin_l, ls_sigs_bin_r])
+ylim([-1, 1])
+grid on
+title('VLS HOSIRR')
+subplot(3,1, 2)
+plot(sirr_bin)
+ylim([-1, 1])
+grid on
+title('BIN SIRR')
+subplot(3, 1, 3)
+plot([sh_rir_bin_l, sh_rir_bin_r])
+ylim([-1, 1])
+grid on
+title('MagLS')
+
+
+fidx = 5
+numSecs = size(pars.sectorDirs, 1);
+pdirs = cat(4,analysis.azim{1}, analysis.elev{1});
+ps = (analysis.energy{1});
+ps = 100*ps;  % scale
+ps(ps<10e-6) = 10e-6; 
+pa = 1-(analysis.diff{1});
+pa(pa<0.9) = 0.75 * pa(pa<0.9); 
+figure
+hold on
+plot(rad2deg(pars.sectorDirs(:,1)), rad2deg(pars.sectorDirs(:,2)), 'k+')
+for idxs = 1:numSecs
+s = scatter(rad2deg(squeeze(pdirs(fidx,:,idxs,1))), rad2deg(squeeze(pdirs(fidx,:,idxs,2))),...
+            squeeze(ps(fidx,:,idxs)), 'filled');
+s.AlphaData = squeeze(pa(fidx,:,idxs));
+s.MarkerFaceAlpha = 'flat';
+end
+alim([0.01, 1])
+
+set(gca, 'XDir','reverse')
+xticks([-180:90:180])
+xlim([-180, 180])
+yticks([-90:45:90])
+ylim([-90, 90])
+xlabel('Azimuth')
+ylabel('Elevation')
+grid on
+daspect([1 1 1])
+title("DOA (f=" + num2str(pars.centerfreqs_anl(fidx)) + "Hz)")
 
