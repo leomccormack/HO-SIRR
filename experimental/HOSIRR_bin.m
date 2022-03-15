@@ -488,16 +488,9 @@ for nr = 1:nRes
             outspec_diff = abs(outspec_diff) .* exp(1i*randomPhi);
         end  
         
-        analysis.sf_energy{nr}(framecount,1) = mean(sum(abs(inspec).^2/nSH,2)); 
-        analysis.ndiff_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff).^2,2)); 
-        analysis.diff_energy{nr}(framecount,1) = mean(sum(abs(outspec_diff).^2,2));
-         
-%         %ambi_ = mean(sum(abs(a_diff).^2,2)); 
-%         sf_ = analysis.sf_energy{nr}(framecount,1); 
-%         ndiff_ = analysis.ndiff_energy{nr}(framecount,1);
-%         diff_ = analysis.diff_energy{nr}(framecount,1);
-%         werew=(diff_+ndiff_)/sf_;
-%         asfadsfwerew=(diff_+ndiff_)-sf_;
+        analysis.sf_energy{nr}(framecount,1) = 1/numel(inspec)*trace(inspec'*inspec); 
+        analysis.ndiff_energy{nr}(framecount,1) = 1/numel(outspec_ndiff)*trace(outspec_ndiff'*outspec_ndiff); 
+        analysis.diff_energy{nr}(framecount,1) = 1/numel(outspec_diff)*trace(outspec_diff'*outspec_diff);
          
         % overlap-add synthesis
         lsir_win_ndiff = real(ifft([outspec_ndiff; conj(outspec_ndiff(end-1:-1:2,:))]));
