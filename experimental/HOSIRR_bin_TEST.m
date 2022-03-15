@@ -18,8 +18,8 @@ pars.multires_xovers = [];
 pars.RENDER_DIFFUSE = 1;
 pars.BROADBAND_FIRST_PEAK = 0; %%%DISABLED     
 pars.nBroadbandPeaks = 1;    
-pars.decorrelationType = 'noise'; 
-pars.BROADBAND_DIFFUSENESS = 1;
+pars.decorrelationType = 'phase';  %%%PHASE
+pars.BROADBAND_DIFFUSENESS = 0;
 pars.maxDiffFreq_Hz = 3000;  
 pars.alpha_diff = 0.5;
 pars.chOrdering = 'ACN';
@@ -27,10 +27,10 @@ pars.normScheme = 'N3D';
 %pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
 pars.hrtf_sofa_path = '~/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
 
-% --- Single plane-wave input --- 
+%% --- Single plane-wave input --- 
 src_dir = [-45 -45];  % try adding more than 1 plane-wave, to see the first-order analysis break
 shir = randn(pars.fs, size(src_dir,1)) * (sqrt(4*pi).*getRSH(pars.order, src_dir)).';
-[~,~,~,~,analysis] = HOSIRR_bin(shir, pars);
+[sirr,~,~,pars,analysis] = HOSIRR_bin(shir, pars);
 
 % In this case, we would expect:
 % - [azimuth elevation] should correspond to 'src_dir'  
@@ -44,14 +44,15 @@ shir = randn(pars.fs, size(src_dir,1)) * (sqrt(4*pi).*getRSH(pars.order, src_dir
 figure, plot(10*log10(analysis.sf_energy{1})), hold on 
 plot(10*log10(analysis.ndiff_energy{1})), hold on
 plot(10*log10(analysis.diff_energy{1})) 
-title('energy (dB)'), grid on, ylim([-40 20])
+title('PW: energy (dB)'), grid on
 legend('sound-field', 'non-diffuse', 'diffuse')
 %figure, plot(analysis.diff{1}(1,:)), title('diffuseness'), grid on, ylim([0 1])
 
-% --- Diffuse input --- 
-[~, diff_dirs] = getTdesign(21); % approximate diffuse-field with 240 incoherent noise sources
-shir = randn(pars.fs, size(diff_dirs,1)) * (sqrt(4*pi).*getRSH(pars.order, diff_dirs*180/pi)).';
-[~,~,~,~,analysis] = HOSIRR_bin(shir, pars);
+%% --- Diffuse input --- 
+%[~, diff_dirs] = getTdesign(21); % approximate diffuse-field with 240 incoherent noise sources
+%shir = randn(pars.fs, size(diff_dirs,1)) * (sqrt(4*pi).*getRSH(pars.order, diff_dirs*180/pi)).';
+shir = randn(pars.fs, (pars.order+1)^2);
+[sirr,~,~,pars,analysis] = HOSIRR_bin(shir, pars);
 
 % In this case, we would expect:
 % - [azimuth elevation] should be random 
@@ -65,10 +66,11 @@ shir = randn(pars.fs, size(diff_dirs,1)) * (sqrt(4*pi).*getRSH(pars.order, diff_
 figure, plot(10*log10(analysis.sf_energy{1})), hold on 
 plot(10*log10(analysis.ndiff_energy{1})), hold on
 plot(10*log10(analysis.diff_energy{1})) 
-title('energy (dB)'), grid on, ylim([-40 20])
+title('Diffuse: energy (dB)'), grid on
 legend('sound-field', 'non-diffuse', 'diffuse')
 %figure, plot(analysis.diff{1}(1,:)), title('diffuseness'), grid on, ylim([0 1])
 
+%%
 clear pars
 
 %% EITHER: CREATE DEMO SPHERICAL HARMONIC (SH; AMBISONIC/B-FORMAT) RIR
@@ -108,26 +110,21 @@ pars.normScheme = 'N3D'; % 'N3D', or 'SN3D'
 pars.fs = fs;  
 % Specify windowing size, in samples, (note HOSIRR employs 50% overlap)
 pars.multires_winsize = 128;
-pars.multires_xovers = [ ];   
-% or if you want to use the multi-resolution STFT option, e.g.:
-%    512 samples hop size up to 500 Hz, then:
-%    128 samples hop size   "   2 kHz,    "
-%    64  samples hop size above 2 kHz
 % then set the following:
-%pars.multires_winsize = [512, 128, 64]; 
-%pars.multires_xovers = [500, 2e3];   
 pars.RENDER_DIFFUSE = 1;
-pars.decorrelationType = 'noise';
+pars.decorrelationType = 'phase';
 % This option isolates the first peak in the response and renders it based
 % on a broad-band DoA estimate. 
 pars.BROADBAND_FIRST_PEAK = 1;  
 % This option allows the diffuseness parameter to be computed broad-band
 % (up to "maxDiffFreq_Hz") and replicated to all bin, rather than
 % computing the diffuseness for each bin independently
-pars.BROADBAND_DIFFUSENESS = 1;
+pars.BROADBAND_DIFFUSENESS = 0;
 pars.maxDiffFreq_Hz = 3000;  
 % diffuseness parameter temporal averaging coefficient (one-pole filter)
 pars.alpha_diff = 0.5; 
+% Sector pattern
+pars.pattern = 'maxRE';
 
 % 
 % %% EITHER: DEFINE THE SAME LOUDSPEAKER DIRECTIONS AS REFERENCE
@@ -163,48 +160,25 @@ disp(' * BINAURAL')
 pars.hrtf_sofa_path = '~/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
 
 assert(isfile(pars.hrtf_sofa_path))
-pars.BROADBAND_FIRST_PEAK = 0;
-[sirr_bin, ~, ~, pars, analysis] = HOSIRR_bin(sh_rir, pars);
+[sirr_bin, sir_ndiff, sir_diff, pars, analysis] = HOSIRR_bin(sh_rir, pars);
 audiowrite(['HOSIRR_o' num2str(demo_order) '_bin.wav'], 0.9.*sirr_bin, fs);
 
+hrir_0 = pars.hrirs(:, :, 6);
+omni_bir = fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1));
 LISTEN = true
 if LISTEN
-hrir_0 = pars.hrirs(:, :, 6);
-mono_bir = fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1));
-sound(mono_bir, fs)
-pause(2)
+%sound(omni_bir, fs)
+%pause(2)
 sound(sirr_bin, fs)
+pause(2)
+sound(sir_ndiff, fs)
+pause(2)
+sound(sir_diff, fs)
 pause(2)
 end
 
-figure
-subplot(2,1,1)
-plot(mono_bir)
-title('Omni')
-subplot(2,1, 2)
-plot(sirr_bin)
-title('SIRR')
-
-rms(mono_bir(0.1*fs:end-100, :))
-rms(sirr_bin(0.1*fs:end-100, :))
-
 
 %% Compare
-[x_ls, y_ls, z_ls] = sph2cart( pars.ls_dirs_deg(:,1)*pi/180,...
-                               pars.ls_dirs_deg(:,2)*pi/180, 1);
-[x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(pars.hrtf_dirs_deg(:, 1)*pi/180,...
-                                       pars.hrtf_dirs_deg(:, 2)*pi/180, 1);
-ls_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_ls, y_ls, z_ls].';
-[d_min, d_min_k] = max(ls_proj);
-ls_sigs_bin_l = sum(fftfilt(squeeze(pars.hrirs(:, 1, d_min_k)), sirr_ls_rir), 2);
-ls_sigs_bin_r = sum(fftfilt(squeeze(pars.hrirs(:, 2, d_min_k)), sirr_ls_rir), 2);
-disp("LS HOSIRR")
-sound([ls_sigs_bin_l, ls_sigs_bin_r], fs)
-pause(2)
-disp("Binaural HOSIRR")
-sound(sirr_bin, fs)
-pause(2)
-
 % Prepare HRTFs
 hrtfs = fft(pars.hrirs, [], 1);
 assert (mod(size(pars.hrirs, 1)+1, 2))
@@ -214,16 +188,41 @@ hrtfs = hrtfs(1:size(pars.hrirs, 1)/2+1, :, :);  % pos half
     pars.hrtf_dirs_deg, pars.order, pars.fs, 1500, pars.hrirs_weights);
 sh_rir_bin_l = sum(fftfilt(squeeze(D_bin_filters(1, :,:)).', sh_rir), 2);
 sh_rir_bin_r = sum(fftfilt(squeeze(D_bin_filters(2, :,:)).', sh_rir), 2);
+rir_magLS = [sh_rir_bin_l, sh_rir_bin_r];
 disp("MagLS")
-soundsc([sh_rir_bin_l, sh_rir_bin_r], fs)
+sound(rir_magLS, fs)
 pause(2)
+
+
+[x_ls, y_ls, z_ls] = sph2cart( pars.ls_dirs_deg(:,1)*pi/180,...
+                               pars.ls_dirs_deg(:,2)*pi/180, 1);
+[x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(pars.hrtf_dirs_deg(:, 1)*pi/180,...
+                                       pars.hrtf_dirs_deg(:, 2)*pi/180, 1);
+ls_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_ls, y_ls, z_ls].';
+[d_min, d_min_k] = max(ls_proj);
+ls_sigs_bin_l = sum(fftfilt(squeeze(pars.hrirs(:, 1, d_min_k)), sirr_ls_rir), 2);
+ls_sigs_bin_r = sum(fftfilt(squeeze(pars.hrirs(:, 2, d_min_k)), sirr_ls_rir), 2);
+vls_sirr = [ls_sigs_bin_l, ls_sigs_bin_r];
+disp("VLS HOSIRR")
+sound(vls_sirr, fs)
+pause(2)
+disp("Binaural HOSIRR")
+sound(sirr_bin, fs)
+pause(2)
+
+
 %out2 = matrixConvolver(sh_rir, permute(D_bin_filters,[3, 2, 1]), 2048);
 %soundsc(out2, fs)
+
+rms(omni_bir(0.5*fs:fs, :))
+rms(rir_magLS(0.5*fs:fs, :))
+rms(vls_sirr(0.5*fs:fs, :))
+rms(sirr_bin(0.5*fs:fs, :))
 
 %%
 figure
 subplot(3,1,1)
-plot([ls_sigs_bin_l, ls_sigs_bin_r])
+plot(vls_sirr)
 ylim([-1, 1])
 grid on
 title('VLS HOSIRR')
@@ -233,12 +232,12 @@ ylim([-1, 1])
 grid on
 title('BIN SIRR')
 subplot(3, 1, 3)
-plot([sh_rir_bin_l, sh_rir_bin_r])
+plot(rir_magLS)
 ylim([-1, 1])
 grid on
 title('MagLS')
 
-
+%%
 fidx = 5
 numSecs = size(pars.sectorDirs, 1);
 pdirs = cat(4,analysis.azim{1}, analysis.elev{1});
