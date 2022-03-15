@@ -275,6 +275,7 @@ for nr = 1:nRes
     else  % even
         hrtfs = hrtfs(1:lenHrirs/2+1, :, :);  % pos half
     end
+    %pars.hrtfs = hrtfs;
     pars.hrtf_mag = abs(hrtfs);
      
     % storage for estimated parameters
@@ -377,7 +378,7 @@ for nr = 1:nRes
                 prev_energy(:,n) = diff_energy;
                 %assert(all(diffs(:,n)<=1.001))
                 %assert(all(diffs(:,n)>=0))
-            end 
+            end
 
             % freq smoothing  (avoid sharp modulation)
             if true
@@ -425,8 +426,8 @@ for nr = 1:nRes
             z_inp = pchip(pars.centerfreqs_anl, z, pars.hrtf_centerfreqs);
             [azim_inp, elev_inp, r_inp] = cart2sph(x_inp, y_inp, z_inp);
 
-            hrtf_interp = interpHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
-            %hrtf_interp = nearestHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
+            %hrtf_interp = interpHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
+            hrtf_interp = nearestHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
             
             %ndiffs_sqrt_inp = pchip(pars.centerfreqs_anl, ndiffs_sqrt, pars.hrtf_centerfreqs);
             % apply ndiff gain to hrtf
@@ -577,8 +578,7 @@ if pars.BROADBAND_FIRST_PEAK
     [~, d_min_k] = max(doa_proj);
     p_hrirs = pars.hrirs(:, :, d_min_k);
     
-    % TODO: scale pressure channel?
-    p_first = sqrt(4*pi) * shir_direct(:,1);
+    p_first = sqrt(4*pi) * shir_direct(:,1);% TODO: scale pressure channel?
     lsir_ndiff = lsir_ndiff + fftfilt(p_hrirs, p_first);  % lots of zeros at the end, no padding
 end 
 
@@ -886,15 +886,28 @@ function hrtf_nearest = nearestHRTFs(azi, ele, pars, freq_bins)
     nBins = length(freq_bins);
     assert(length(azi) == nBins);
     hrtf_nearest = zeros(nBins, 2);
-    
+
+    cutoff = 1500;
+    [~,kk_cutoff] = min(abs(freq_bins-cutoff));
+
     [x_ls, y_ls, z_ls] = sph2cart(azi*pi/180,...
                                   ele*pi/180, 1);
     [x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(pars.hrtf_dirs_deg(:, 1)*pi/180,...
                                            pars.hrtf_dirs_deg(:, 2)*pi/180, 1);
     ls_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_ls, y_ls, z_ls].';
     [d_min, d_min_k] = max(ls_proj);
-    for idx = 1:nBins
-        hrtf_nearest(idx, :) = pars.hrtf_mag(idx, :, d_min_k(idx));
+%     for k = 1:nBins
+%        hrtf_nearest(k, :) = pars.hrtfs(k, :, d_min_k(k));
+%     end
+    for k = 1:nBins
+        if k < kk_cutoff
+            % convert ITDs to phase differences -pi~pi
+            ipd = mod(2*pi*freq_bins(k)*pars.hrtf_itd(k) + pi, 2*pi) - pi;
+            hrtf_nearest(k, 1) = exp(1i*ipd/2) .* pars.hrtf_mag(k, 1, d_min_k(k));
+            hrtf_nearest(k, 2) = exp(-1i*ipd/2) .* pars.hrtf_mag(k, 2, d_min_k(k));
+        else
+            hrtf_nearest(k, :) = pars.hrtf_mag(k, :, d_min_k(k));
+        end
     end
 end
 
