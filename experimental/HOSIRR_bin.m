@@ -470,7 +470,7 @@ for nr = 1:nRes
             if pars.order == 1
                 a_diff = repmat(diffgains, [1 nSH]).*inspec;  % Check
             else
-                a_diff = z_diff * Y_enc.'; 
+                a_diff = z_diff * ((diag(replicatePerOrder(c_n_res)) * Y_enc).'); 
             end % encode 
             outspec_diff = zeros(nBins_syn, 2);
             % prepare for frequency domain convolution
