@@ -895,14 +895,14 @@ function hrtf_nearest = nearestHRTFs(azi, ele, pars, freq_bins)
     [x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(pars.hrtf_dirs_deg(:, 1)*pi/180,...
                                            pars.hrtf_dirs_deg(:, 2)*pi/180, 1);
     ls_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_ls, y_ls, z_ls].';
-    [d_min, d_min_k] = max(ls_proj);
+    [~, d_min_k] = max(ls_proj);
 %     for k = 1:nBins
 %        hrtf_nearest(k, :) = pars.hrtfs(k, :, d_min_k(k));
 %     end
     for k = 1:nBins
         if k < kk_cutoff
             % convert ITDs to phase differences -pi~pi
-            ipd = mod(2*pi*freq_bins(k)*pars.hrtf_itd(k) + pi, 2*pi) - pi;
+            ipd = mod(2*pi*freq_bins(k)*pars.hrtf_itd(d_min_k(k)) + pi, 2*pi) - pi;
             hrtf_nearest(k, 1) = exp(1i*ipd/2) .* pars.hrtf_mag(k, 1, d_min_k(k));
             hrtf_nearest(k, 2) = exp(-1i*ipd/2) .* pars.hrtf_mag(k, 2, d_min_k(k));
         else
