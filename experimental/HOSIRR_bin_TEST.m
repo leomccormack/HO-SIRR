@@ -6,7 +6,7 @@ addpath '../_Simulated_Rooms_' '../_Stimuli_'
 
 demo_order = 3;  
 [input_stimulus, fs_in] = audioread('music__KickDrumClicky.wav');
-
+sofapath = '~/data/HRTFs/Kemar_Aalto_2016/KemarAuralID.sofa';
 
 %% FIRST-ORDER SIRR BIN CHECKS
 pars.order = 1;  
@@ -24,8 +24,7 @@ pars.maxDiffFreq_Hz = 3000;
 pars.alpha_diff = 0.5;
 pars.chOrdering = 'ACN';
 pars.normScheme = 'N3D';
-%pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
-pars.hrtf_sofa_path = '~/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
+pars.hrtf_sofa_path = sofapath;
 
 %% --- Single plane-wave input --- 
 src_dir = [-45 -45];  % try adding more than 1 plane-wave, to see the first-order analysis break
@@ -156,8 +155,7 @@ audiowrite(['HOSIRR_ls_o' num2str(demo_order) '.wav'], 0.9.*sirr_ls_rir, fs);
 %% WIP: BINAURAL
 disp(' * BINAURAL')
 % load HRIRs
-%pars.hrtf_sofa_path = '/Users/mccorml1/Documents/HRIRs_SOFA/kemarhead_aalto2016.sofa';
-pars.hrtf_sofa_path = '~/data/HRTFs/Kemar_Aalto_2016/kemarhead_aalto2016.sofa';
+pars.hrtf_sofa_path = sofapath;
 
 assert(isfile(pars.hrtf_sofa_path))
 [sirr_bin, sir_ndiff, sir_diff, pars, analysis] = HOSIRR_bin(sh_rir, pars);
