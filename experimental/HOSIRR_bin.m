@@ -300,17 +300,19 @@ for nr = 1:nRes
         case 1
             % New SIRR diffuse stream, based on scaling the sector signals 
             % with diffuseness estimates and then re-encoding them into 
-            % SHs, and then decoding them to the loudspeaker setup
+            % SHs, and then decoding them binaurally.
             if pars.order==1
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';
                 D_bin = getAmbisonic2BinauralFilters_magls_zotter(...
                     permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order, pars.fs, 1500, pars.hrirs_weights);
             else 
-                Y_enc = getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
+                Y_enc = diag(replicatePerOrder(c_n_res)) * ...
+                    getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
                 %D_ls = sqrt(4*pi/nLS).*getRSH(pars.order-1, ls_dirs_deg).';   
                 D_bin = getAmbisonic2BinauralFilters_magls_zotter(...
                     permute(hrtfs, [2 3 1]), hrir_dirs_deg, pars.order-1, pars.fs, 1500, pars.hrirs_weights);
-            end    
+            end
+            D_bin_interp = interpolateFilters(D_bin, fftsize_syn);
     end 
      
     % diffuseness averaging buffers 
@@ -376,15 +378,16 @@ for nr = 1:nRes
                 diffs(:,n) = 1 - sqrt(sum(diff_intensity.^2,2)) ./ (diff_energy + eps); 
                 prev_intensity(:,:,n) = diff_intensity;
                 prev_energy(:,n) = diff_energy;
+                % freq smoothing  (avoid sharp modulation)
+                if true
+                    diffs(:,n) = medfilt1(diffs(:,n), 4, [], 1, 'truncate');
+                    %diffs(:,n) = sgolayfilt(diffs(:,n), 3, 5, [], 1);
+                end
                 %assert(all(diffs(:,n)<=1.001))
                 %assert(all(diffs(:,n)>=0))
             end
 
-            % freq smoothing  (avoid sharp modulation)
-            if true
-                diffs(:,n) = medfilt1(diffs(:,n), 4, [], 1, 'truncate');
-                %diffs(:,n) = sgolayfilt(diffs(:,n), 3, 5, [], 1);
-            end
+
             
             % storage for estimated parameters over time
             analysis.azim{nr}(:,framecount,n) = azim(:,n);
@@ -462,8 +465,8 @@ for nr = 1:nRes
                     %diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
                     %diffgains = permute(diffgains, [3 2 1]); 
                     if pars.order > 1
-                        % Decorrelators not perfect, therefore beta_E as mix
-                        z_diff(:, n) = diffgains .* (0.75*sqrt(beta_E) + 0.25*beta_A) .* z_00(:,n); 
+                        % Decorrelators not perfect, could use (0.75*sqrt(beta_E) + 0.25*beta_A)
+                        z_diff(:, n) = diffgains .* sqrt(beta_E) .* z_00(:,n); 
                     end
             end  
         end 
@@ -471,11 +474,10 @@ for nr = 1:nRes
             if pars.order == 1
                 a_diff = repmat(diffgains, [1 nSH]).*inspec;  % Check
             else
-                a_diff = z_diff * ((diag(replicatePerOrder(c_n_res)) * Y_enc).'); 
+                a_diff = z_diff * (Y_enc).'; 
             end % encode 
             outspec_diff = zeros(nBins_syn, 2);
             % prepare for frequency domain convolution
-            D_bin_interp = interpolateFilters(D_bin, fftsize_syn);
             a_diff = interpolateSpectrum(a_diff, fftsize_syn);
 
             for k=1:nBins_syn
