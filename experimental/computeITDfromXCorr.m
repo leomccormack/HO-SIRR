@@ -1,14 +1,18 @@
 function itds = computeITDfromXCorr(hrirs, fs, cutoff)
-%COMPUTEITDFROMXCORR Summary of this function goes here
-%   Detailed explanation goes here
+%COMPUTEITDFROMXCORR from (filtered) HRIRs.
+%   HRIRS: (ntaps,2,nDirs)
 
 if nargin<3, cutoff = 800; end
 
 nDirs = size(hrirs,3);
 
-lp = fir1(250, cutoff/(fs/2),'low');
+ntaps = 250;
+lp = fir1(ntaps, cutoff/(fs/2),'low');
 if cutoff
-    hrirs_lp = filter(lp,1,[hrirs; zeros(250,2,nDirs)]);
+    %hrirs_lp = filter(lp,1,[hrirs; zeros(ntaps,2,nDirs)]);
+    % zero-phase filter
+    hrirs_lp = filtfilt(lp,1, ...
+        cat(1,zeros(ntaps,2,nDirs),hrirs,zeros(ntaps,2,nDirs)));
 else
     hrirs_lp = hrirs;
 end
@@ -17,6 +21,7 @@ lHrir = size(resample(hrirs_lp(:,1,1),8*fs,fs),1);
 % itds measured from as delay from left ear first - positive delay means
 % source on the left hemisphere (right hrir after the left), negative delay 
 % means source on the right (right hrir before left)
+itds = zeros(nDirs, 1);
 for n=1:nDirs
     h = squeeze(hrirs_lp(:,:,n));
     h = resample(h,8*fs,fs);
