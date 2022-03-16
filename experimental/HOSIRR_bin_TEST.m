@@ -141,7 +141,7 @@ pars.ls_dirs_deg = dirs_rad*180/pi;
 % % pars.ls_dirs_deg = [ 0 0; 45 0; -45 0; 90 0; -90 0; 135 0; -135 0; 45 35; -45 35; 90 35; -90 35; 0 90;]; 
 % 
 % 
-% %% RENDER SH RIR TO TARGET LOUDSPEAKER LAYOUT
+%% RENDER SH RIR TO TARGET LOUDSPEAKER LAYOUT
 % % Render
 tic, sirr_ls_rir = HOSIRR(sh_rir, pars); toc
 audiowrite(['HOSIRR_ls_o' num2str(demo_order) '.wav'], 0.9.*sirr_ls_rir, fs);
@@ -163,8 +163,8 @@ assert(isfile(pars.hrtf_sofa_path))
 [sirr_bin, sir_ndiff, sir_diff, pars, analysis] = HOSIRR_bin(sh_rir, pars);
 audiowrite(['HOSIRR_o' num2str(demo_order) '_bin.wav'], 0.9.*sirr_bin, fs);
 
-hrir_0 = pars.hrirs(:, :, 6);
-omni_bir = fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1));
+%hrir_0 = pars.hrirs(:, :, 6);
+%omni_bir = fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1));
 LISTEN = true
 if LISTEN
 %sound(omni_bir, fs)
@@ -214,7 +214,7 @@ pause(2)
 %out2 = matrixConvolver(sh_rir, permute(D_bin_filters,[3, 2, 1]), 2048);
 %soundsc(out2, fs)
 
-rms(omni_bir(0.5*fs:fs, :))
+%rms(omni_bir(0.5*fs:fs, :))
 rms(rir_magLS(0.5*fs:fs, :))
 rms(vls_sirr(0.5*fs:fs, :))
 rms(sirr_bin(0.5*fs:fs, :))
@@ -242,7 +242,9 @@ fidx = 5
 numSecs = size(pars.sectorDirs, 1);
 pdirs = cat(4,analysis.azim{1}, analysis.elev{1});
 ps = (analysis.energy{1});
-ps = 100*ps;  % scale
+%pscale = 100;  % scale
+pscale = 250*1/max(max(abs(ps(fidx, :,:))));
+ps = pscale * ps;max(max(abs(ps(fidx, :,:))))
 ps(ps<10e-6) = 10e-6; 
 pa = 1-(analysis.diff{1});
 pa(pa<0.9) = 0.75 * pa(pa<0.9); 
