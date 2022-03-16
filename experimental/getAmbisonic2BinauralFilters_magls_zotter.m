@@ -2,6 +2,8 @@ function [decMtx, decFilters, C, ild, itd, cll, ambihrtfs, ambihrirs] = getAmbis
 %GETAMBISONIC2BINAURALFILTERS_LS Summary of this function goes here
 %   Detailed explanation goes here
 % hrtfs 2 x nDirs x nBins
+% decMtx 2 x nSH x nBins
+
 if nargin<6, weights = false; end  % should sum to 4pi
 if nargin<5, cutoff = 1500; end
 
@@ -17,8 +19,6 @@ Y_na = getRSH(order, hrtf_dirs_deg);
 nFFT = 2*(nBins-1);
 f = (0:nFFT/2)*fs/nFFT;
 [~,kk_cutoff] = min(abs(f-cutoff));
-
-
 % Solution matrix
 B_magls = zeros(nSH, 2, nBins);
 for kk=1:nBins
@@ -27,7 +27,8 @@ for kk=1:nBins
         if weights
             B_magls(:,:,kk) = (Y_na*W*Y_na.')\(Y_na*W*H.');
         else
-            B_magls(:,:,kk) = pinv(Y_na.') * H.';
+            %B_magls(:,:,kk) = pinv(Y_na.') * H.';
+            B_magls(:,:,kk) = (Y_na*Y_na.')\Y_na*H.';
         end
     else
 %         D_prev = decMtx(:,:,kk-1);%B_magls(:,:,kk-1)';
@@ -43,7 +44,8 @@ for kk=1:nBins
         if weights
             B_magls(:,:,kk) = (Y_na*W*Y_na.')\(Y_na*W*H_mod.');
         else
-            B_magls(:,:,kk) = pinv(Y_na.') * H_mod.';
+            %B_magls(:,:,kk) = pinv(Y_na.') * H_mod.';
+            B_magls(:,:,kk) = (Y_na*Y_na.')\Y_na*H_mod.';
         end
     end
 end
@@ -65,9 +67,8 @@ if nargout>2
         cll(:,kk) = 10*log10(sum( abs(ambihrtfs(:,:,kk)).^2 ) ./ sum( abs(hrtfs(:,:,kk)).^2 ) );
     end
     ambihrirs = cat(3, ambihrtfs, conj(ambihrtfs(:,:,end-1:-1:2)));
-    ambihrirs = permute(ambihrirs, [3 1 2]);
-    ambihrirs = real(ifft(ambihrirs,[],1));
-    itd = computeITDfromXCorr(ambihrirs, fs);
+    ambihrirs = real(ifft(ambihrirs,[],3));
+    itd = computeITDfromXCorr(permute(ambihrirs, [3 1 2]), fs);
 end
 
 end
