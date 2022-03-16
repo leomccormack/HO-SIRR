@@ -317,6 +317,10 @@ for nr = 1:nRes
                 diffs(:,n) = 1 - sqrt(sum(diff_intensity.^2,2)) ./ (diff_energy + eps); 
                 prev_intensity(:,:,n) = diff_intensity;
                 prev_energy(:,n) = diff_energy;
+                if true  % freq smoothing  (avoid sharp modulation)
+                    diffs(:,n) = medfilt1(diffs(:,n), 4, [], 1, 'truncate');
+                    %diffs(:,n) = sgolayfilt(diffs(:,n), 3, 5, [], 1);
+                end
                 %assert(all(diffs(:,n)<=1.001))
                 %assert(all(diffs(:,n)>=0))
             end 
