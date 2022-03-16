@@ -162,7 +162,9 @@ itd = computeITDfromXCorr(hrirs, pars.fs);
 hrir_dirs_deg = hrir_dirs_deg(1:2,:).'; %         % nHRTF x 2     (deg)
 pars.hrtf_dirs_deg = hrir_dirs_deg;
 pars.hrirs = hrirs;
-pars.hrirs_weights = getVoronoiWeights(pars.hrtf_dirs_deg);
+%pars.hrirs_weights = getVoronoiWeights(pars.hrtf_dirs_deg);
+[pars.hrirs_weights,ordest] = findGridWeights(deg2rad(pars.hrtf_dirs_deg(:,1)),...
+                                     pi/2-deg2rad(pars.hrtf_dirs_deg(:,2)));
 pars.hrtf_itd = itd;        % nHRTF x 1 
 pars.hrtf_vbapTableRes = [2 5]; % resolution azim/elev in degs
 vbapTable = getGainTable(pars.hrtf_dirs_deg, pars.hrtf_vbapTableRes);
