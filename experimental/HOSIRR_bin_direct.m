@@ -269,6 +269,14 @@ for nr = 1:nRes
     end
     %pars.hrtfs = hrtfs;
     pars.hrtf_mag = abs(hrtfs);
+
+    [x_ls, y_ls, z_ls] = sph2cart( pars.sectorDirs(:,1)*pi/180,...
+                               pars.sectorDirs(:,2)*pi/180, 1);
+    [x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(pars.hrir_dirs_deg(:, 1)*pi/180,...
+                                           pars.hrir_dirs_deg(:, 2)*pi/180, 1);
+    ls_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_ls, y_ls, z_ls].';
+    [~, d_min_k] = max(ls_proj);
+    hrtfs_sec = hrtfs(:,:,d_min_k);
      
     % storage for estimated parameters
     analysis.azim{nr} = nan(nBins_anl, ceil(lSig/hopsize), numSec);
@@ -394,19 +402,24 @@ for nr = 1:nRes
       %  elev(:,:) = 0;
          
         %%% SIRR SYNTHESIS %%% 
+        z_00 = zeros(nBins_anl, numSec);
+        z_ndiff = zeros(nBins_anl, numSec); 
         if pars.RENDER_DIFFUSE
             z_diff = zeros(nBins_anl, numSec); 
         end
-        z_00 = zeros(nBins_anl, numSec); 
+        outspec_diff = zeros(nBins_syn, 2);
+        outspec_ndiff = zeros(nBins_syn, 2);
+
+
         W_S = pars.sectorCoeffs;
         for n=1:numSec  
              
             % NON-DIFFUSE PART
-            diffs_interp = pchip(pars.centerfreqs_anl, diffs(:,n), pars.hrtf_centerfreqs);
-            ndiffs_sqrt = sqrt(1-diffs_interp);
+            %diffs_interp = pchip(pars.centerfreqs_anl, diffs(:,n), pars.hrtf_centerfreqs);
+            %ndiffs_sqrt = sqrt(1-diffs_interp);
             
             % TODO: handle sqrt(10e-14)
-            ndiffs_sqrt(ndiffs_sqrt<10e-7) = 0;
+            %ndiffs_sqrt(ndiffs_sqrt<10e-7) = 0;
             
             % Gain factor computation
             %eleindex = round((elev(:,n)*180/pi+90)/vbap_gtable_res(2));
@@ -422,14 +435,14 @@ for nr = 1:nRes
             [azim_inp, elev_inp, r_inp] = cart2sph(x_inp, y_inp, z_inp);
 
             %hrtf_interp = interpHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
-            hrtf_interp = nearestHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
+            hrtf_ndif = nearestHRTFs(rad2deg(azim_inp), rad2deg(elev_inp), pars);
             
             %ndiffs_sqrt_inp = pchip(pars.centerfreqs_anl, ndiffs_sqrt, pars.hrtf_centerfreqs);
             % apply ndiff gain to hrtf
             if pars.RENDER_DIFFUSE
-                ndiffgains = hrtf_interp .* (ndiffs_sqrt*ones(1,2)); 
+                ndiffgains = sqrt(1-diffs(:,n));
             else
-                ndiffgains = hrtf_interp * 1;
+                ndiffgains = 1;
             end
             
             % Interpolate panning filters 
@@ -438,14 +451,18 @@ for nr = 1:nRes
             
             % generate non-diffuse stream
             z_00(:,n) = inspec*W_S(:, 4*(n-1) + 1);
+
+            z_ndiff(:, n) = ndiffgains .* z_00(:,n); 
             
             % prepare for frequency domain convolution
-            ndiffgains = squeeze(permute(interpolateFilters(permute(ndiffgains, [3, 2, 1]), fftsize_syn), [3, 2, 1]));
-            z_00_int = interpolateSpectrum(z_00(:,n), fftsize_syn);
+            %hrtf_interp = squeeze(permute(interpolateFilters(permute(hrtf_ndif, [3, 2, 1]), fftsize_syn), [3, 2, 1]));
             
             % apply filter
-            outspec_ndiff = outspec_ndiff + ndiffgains .* (beta_A.*z_00_int*ones(1,2));
-    
+            outspec_ndiff_sec_l = beta_A * interpolateSpectrum(z_ndiff(:, n),fftsize_syn) .* interpolateSpectrum(hrtf_ndif(:,1), fftsize_syn);
+            outspec_ndiff_sec_r = beta_A * interpolateSpectrum(z_ndiff(:, n),fftsize_syn) .* interpolateSpectrum(hrtf_ndif(:,2), fftsize_syn);
+
+            outspec_ndiff(:,1) = outspec_ndiff(:,1) + outspec_ndiff_sec_l;
+            outspec_ndiff(:,2) = outspec_ndiff(:,2) + outspec_ndiff_sec_r;
             % DIFFUSE PART
             switch pars.RENDER_DIFFUSE
                 case 0
@@ -460,21 +477,29 @@ for nr = 1:nRes
                         z_diff(:, n) = diffgains .* z_00(:,n); 
                     end
             end  
-        end 
+         
         if pars.RENDER_DIFFUSE
-            if pars.order == 1
-                a_diff = repmat(diffgains, [1 nSH]).*inspec;  % Check
-            else
-                a_diff = z_diff * (beta_A .* Y_enc).';  % Perfect Reconstuction
-            end % encode 
-            outspec_diff = zeros(nBins_syn, 2);
+            %if pars.order == 1
+            %    a_diff = repmat(diffgains, [1 nSH]).*inspec;  % Check
+            %else
+            %    a_diff = z_diff * (beta_A .* Y_enc).';  % Perfect Reconstuction
+            %end % encode 
             % prepare for frequency domain convolution
-            a_diff = interpolateSpectrum(a_diff, fftsize_syn);
+            %a_diff = interpolateSpectrum(a_diff, fftsize_syn);
 
-            for k=1:nBins_syn
-                outspec_diff(k,:) = (squeeze(D_bin_interp(:,:,k)) * a_diff(k,:).').'; % decode
-            end
+            %for k=1:nBins_syn
+            %    outspec_diff(k,:) = (squeeze(D_bin_interp(:,:,k)) * a_diff(k,:).').'; % decode
+            %end
+            outspec_diff_sec_l = beta_A * interpolateSpectrum(z_diff(:, n),fftsize_syn) .* interpolateSpectrum(hrtfs_sec(:,1,n), fftsize_syn);
+            outspec_diff_sec_r = beta_A * interpolateSpectrum(z_diff(:, n),fftsize_syn) .* interpolateSpectrum(hrtfs_sec(:,2,n), fftsize_syn);
+
+            outspec_diff(:,1) = outspec_diff(:,1) + outspec_diff_sec_l;
+            outspec_diff(:,2) = outspec_diff(:,2) + outspec_diff_sec_r;
+
         end
+
+
+        end  % sec
         
         % decorrelation based on randomising the phase
         if isequal(pars.decorrelationType, 'phase')

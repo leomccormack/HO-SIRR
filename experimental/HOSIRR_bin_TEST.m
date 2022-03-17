@@ -176,37 +176,65 @@ pause(2)
 end
 
 
-%% Compare
-% Prepare HRTFs
+%% WIP: BINAURAL Direct
+disp(' * BINAURAL')
+% load HRIRs
+pars.hrtf_sofa_path = sofapath;
+
+assert(isfile(pars.hrtf_sofa_path))
+[sirr_bind, sir_ndiffd, sir_diffd, pars, analysis] = HOSIRR_bin_direct(sh_rir, pars);
+audiowrite(['HOSIRR_o' num2str(demo_order) '_bin.wav'], 0.9.*sirr_bin, fs);
+
+%hrir_0 = pars.hrirs(:, :, 6);
+%omni_bir = fftfilt(hrir_0, sqrt(4*pi)*sh_rir(:, 1));
+LISTEN = true
+if LISTEN
+%sound(omni_bir, fs)
+%pause(2)
+sound(sirr_bind, fs)
+pause(2)
+sound(sir_ndiffd, fs)
+pause(2)
+sound(sir_diffd, fs)
+pause(2)
+end
+
+
+%% Binauralize
 hrtfs = fft(pars.hrirs, [], 1);
 assert (mod(size(pars.hrirs, 1)+1, 2))
 hrtfs = hrtfs(1:size(pars.hrirs, 1)/2+1, :, :);  % pos half
 
 [D_bin, D_bin_filters] = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]),...
-    pars.hrtf_dirs_deg, pars.order, pars.fs, 1500, pars.hrirs_weights);
+    pars.hrir_dirs_deg, pars.order, pars.fs, 1500, pars.hrirs_weights);
 sh_rir_bin_l = sum(fftfilt(squeeze(D_bin_filters(1, :,:)).', sh_rir), 2);
 sh_rir_bin_r = sum(fftfilt(squeeze(D_bin_filters(2, :,:)).', sh_rir), 2);
 rir_magLS = [sh_rir_bin_l, sh_rir_bin_r];
-disp("MagLS")
-sound(rir_magLS, fs)
-pause(2)
-
 
 [x_ls, y_ls, z_ls] = sph2cart( pars.ls_dirs_deg(:,1)*pi/180,...
                                pars.ls_dirs_deg(:,2)*pi/180, 1);
-[x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(pars.hrtf_dirs_deg(:, 1)*pi/180,...
-                                       pars.hrtf_dirs_deg(:, 2)*pi/180, 1);
+[x_hrfts, y_hrtfs, z_hrtfs] = sph2cart(pars.hrir_dirs_deg(:, 1)*pi/180,...
+                                       pars.hrir_dirs_deg(:, 2)*pi/180, 1);
 ls_proj = [x_hrfts, y_hrtfs, z_hrtfs] * [x_ls, y_ls, z_ls].';
 [d_min, d_min_k] = max(ls_proj);
 ls_sigs_bin_l = sum(fftfilt(squeeze(pars.hrirs(:, 1, d_min_k)), sirr_ls_rir), 2);
 ls_sigs_bin_r = sum(fftfilt(squeeze(pars.hrirs(:, 2, d_min_k)), sirr_ls_rir), 2);
 vls_sirr = [ls_sigs_bin_l, ls_sigs_bin_r];
+
+%% Compare
+disp("MagLS")
+sound(rir_magLS, fs)
+pause(2)
 disp("VLS HOSIRR")
 sound(vls_sirr, fs)
 pause(2)
 disp("Binaural HOSIRR")
 sound(sirr_bin, fs)
 pause(2)
+disp("Direct Binaural HOSIRR")
+sound(sirr_bind, fs)
+pause(2)
+
 
 
 %out2 = matrixConvolver(sh_rir, permute(D_bin_filters,[3, 2, 1]), 2048);
@@ -216,20 +244,26 @@ pause(2)
 rms(rir_magLS(0.5*fs:fs, :))
 rms(vls_sirr(0.5*fs:fs, :))
 rms(sirr_bin(0.5*fs:fs, :))
+rms(sirr_bind(0.5*fs:fs, :))
 
 %%
 figure
-subplot(3,1,1)
+subplot(4,1,1)
 plot(vls_sirr)
 ylim([-1, 1])
 grid on
 title('VLS HOSIRR')
-subplot(3,1, 2)
+subplot(4,1, 2)
 plot(sirr_bin)
 ylim([-1, 1])
 grid on
 title('BIN SIRR')
-subplot(3, 1, 3)
+subplot(4, 1, 3)
+plot(sirr_bind)
+ylim([-1, 1])
+grid on
+title('DBIN SIRR')
+subplot(4,1,4)
 plot(rir_magLS)
 ylim([-1, 1])
 grid on
