@@ -378,13 +378,13 @@ for nr = 1:nRes
                     if pars.order == 1
                         a_diff = repmat(diffgains, [1 nSH]).*inspec_syn;  % Check
                     else
-                        z_diff(:, n) = diffgains .* sqrt(beta_E) .* z_00(:,n); 
+                        z_diff(:, n) = diffgains .* z_00(:,n); 
                     end
             end  
         end 
         if pars.RENDER_DIFFUSE
             if pars.order > 1
-                a_diff = z_diff * Y_enc.'; 
+                a_diff = z_diff * (beta_A .* Y_enc).';  % Perfect Reconstuction
             end % encode 
             outspec_diff = a_diff * D_ls.'; % decode
         end
