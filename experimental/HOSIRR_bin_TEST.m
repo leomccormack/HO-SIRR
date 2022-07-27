@@ -205,7 +205,7 @@ hrtfs = fft(pars.hrirs, [], 1);
 assert (mod(size(pars.hrirs, 1)+1, 2))
 hrtfs = hrtfs(1:size(pars.hrirs, 1)/2+1, :, :);  % pos half
 
-[D_bin, D_bin_filters] = getAmbisonic2BinauralFilters_magls_zotter(permute(hrtfs, [2 3 1]),...
+[D_bin, D_bin_filters] = getAmbisonic2BinauralFilters_magls_hfcont(permute(hrtfs, [2 3 1]),...
     pars.hrir_dirs_deg, pars.order, pars.fs, 1500, pars.hrirs_weights);
 sh_rir_bin_l = sum(fftfilt(squeeze(D_bin_filters(1, :,:)).', sh_rir), 2);
 sh_rir_bin_r = sum(fftfilt(squeeze(D_bin_filters(2, :,:)).', sh_rir), 2);

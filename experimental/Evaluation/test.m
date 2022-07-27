@@ -50,8 +50,8 @@ hrtfs = fft(hrirs,[],1);
 hrtfs = hrtfs(1:lHRTF/2+1,:,:);
 hrtfs = permute(hrtfs,[2 3 1]);
 f = (0:lHRTF/2)'*fs/lHRTF;
-[D_magls, h_magls] = getAmbisonic2BinauralFilters_magls_zotter(hrtfs, hrtf_dirs_deg, trunc_order, [], fs, w);
-[D_ref, h_ref] = getAmbisonic2BinauralFilters_magls_zotter(hrtfs, hrtf_dirs_deg, ref_order, [], fs, w);
+[D_magls, h_magls] = getAmbisonic2BinauralFilters_magls_hfcont(hrtfs, hrtf_dirs_deg, trunc_order, [], fs, w);
+[D_ref, h_ref] = getAmbisonic2BinauralFilters_magls_hfcont(hrtfs, hrtf_dirs_deg, ref_order, [], fs, w);
 
 % MagLS at same order as HOSIRR_bin
 magls_bin_rir = matrixConvolver(ref_rir(:,1:(trunc_order+1).^2), h_magls, size(h_magls,1));
