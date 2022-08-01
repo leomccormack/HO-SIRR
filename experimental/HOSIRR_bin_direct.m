@@ -441,6 +441,7 @@ for nr = 1:nRes
             % apply ndiff gain to hrtf
             if pars.RENDER_DIFFUSE
                 ndiffgains = sqrt(1-diffs(:,n));
+                %ndiffgains = (1-diffs(:,n));
             else
                 ndiffgains = 1;
             end
@@ -471,6 +472,8 @@ for nr = 1:nRes
                     % New SIRR diffuse stream rendering, based on re-encoding the 
                     % sector signals scaled with the diffuseness estimates
                     diffgains = sqrt(diffs(:,n));  % TODO use interp
+                    %diffgains = (diffs(:,n));  % TODO use interp
+
                     %diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
                     %diffgains = permute(diffgains, [3 2 1]); 
                     if pars.order > 1
@@ -490,8 +493,8 @@ for nr = 1:nRes
             %for k=1:nBins_syn
             %    outspec_diff(k,:) = (squeeze(D_bin_interp(:,:,k)) * a_diff(k,:).').'; % decode
             %end
-            outspec_diff_sec_l = beta_A * interpolateSpectrum(z_diff(:, n),fftsize_syn) .* interpolateSpectrum(hrtfs_sec(:,1,n), fftsize_syn);
-            outspec_diff_sec_r = beta_A * interpolateSpectrum(z_diff(:, n),fftsize_syn) .* interpolateSpectrum(hrtfs_sec(:,2,n), fftsize_syn);
+            outspec_diff_sec_l = beta_E * interpolateSpectrum(z_diff(:, n),fftsize_syn) .* interpolateSpectrum(hrtfs_sec(:,1,n), fftsize_syn);
+            outspec_diff_sec_r = beta_E * interpolateSpectrum(z_diff(:, n),fftsize_syn) .* interpolateSpectrum(hrtfs_sec(:,2,n), fftsize_syn);
 
             outspec_diff(:,1) = outspec_diff(:,1) + outspec_diff_sec_l;
             outspec_diff(:,2) = outspec_diff(:,2) + outspec_diff_sec_r;

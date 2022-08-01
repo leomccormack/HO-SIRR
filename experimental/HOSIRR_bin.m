@@ -465,7 +465,7 @@ for nr = 1:nRes
             if pars.order == 1
                 a_diff = repmat(diffgains, [1 nSH]).*inspec;  % Check
             else
-                a_diff = z_diff * (beta_A .* Y_enc).';  % Perfect Reconstuction
+                a_diff = z_diff * (beta_E .* Y_enc).';  % Perfect Reconstuction
             end % encode 
             outspec_diff = zeros(nBins_syn, 2);
             % prepare for frequency domain convolution
