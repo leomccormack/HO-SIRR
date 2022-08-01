@@ -282,13 +282,13 @@ pa = 1-(analysis.diff{1});
 pa(pa<0.9) = 0.75 * pa(pa<0.9); 
 figure
 hold on
-plot(rad2deg(pars.sectorDirs(:,1)), rad2deg(pars.sectorDirs(:,2)), 'k+')
 for idxs = 1:numSecs
 s = scatter(rad2deg(squeeze(pdirs(fidx,:,idxs,1))), rad2deg(squeeze(pdirs(fidx,:,idxs,2))),...
             squeeze(ps(fidx,:,idxs)), 'filled');
 s.AlphaData = squeeze(pa(fidx,:,idxs));
 s.MarkerFaceAlpha = 'flat';
 end
+plot(rad2deg(pars.sectorDirs(:,1)), rad2deg(pars.sectorDirs(:,2)), 'k+', 'LineWidth',2)
 alim([0.01, 1])
 
 set(gca, 'XDir','reverse')
