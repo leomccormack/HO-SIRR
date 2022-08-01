@@ -70,6 +70,8 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR_bin(shir, pars)
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
+%   Christoph Hold, 2022
+%   Christoph.Hold@aalto.fi
 %   Leo McCormack, 22/09/2018
 %   leo.mccormack@aalto.fi
 %   Archontis Politis, 12/06/2018
