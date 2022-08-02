@@ -189,6 +189,14 @@ if (~isfield(pars, 'pattern')), pars.pattern = 'pwd'; end
 if (~isfield(pars, 'ENABLE_DIFF_PR')), pars.ENABLE_DIFF_PR = true; end
 
 [~,sec_dirs_rad] = getTdesign(2*(max([1, pars.order-1])));  % not consistent with HOSIRR
+
+% Rotation for alignment
+secPos = unitSph2cart(sec_dirs_rad);
+R = calculateRotationMatrix(secPos(1, :), [1, 0, 0]);
+secPos = secPos * R;  % rotate to sec0 = [0,0]
+[secAzi, secEle, secR] = cart2sph(secPos(:,1), secPos(:,2), secPos(:,3));
+sec_dirs_rad = [secAzi, secEle];
+
 A_xyz = computeVelCoeffsMtx(pars.order-1);
 [pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = ...
     computeSectorCoeffs(pars.order-1, A_xyz, pars.pattern, [], sec_dirs_rad);
