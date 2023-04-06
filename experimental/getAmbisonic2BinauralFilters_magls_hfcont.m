@@ -1,8 +1,9 @@
 function [decMtx, decFilters, C, ild, itd, cll, ambihrtfs, ambihrirs] = getAmbisonic2BinauralFilters_magls_hfcont(hrtfs, hrtf_dirs_deg, order, fs, cutoff, weights)
-%GETAMBISONIC2BINAURALFILTERS_LS Summary of this function goes here
-%   Detailed explanation goes here
+%getAmbisonic2BinauralFilters_magls_hfcont Magnitude-Least_squares with HF
+%phase continuation
 % hrtfs 2 x nDirs x nBins
 % decMtx 2 x nSH x nBins
+% Chris Hold 2023
 
 if nargin<6, weights = false; end  % should sum to 4pi
 if nargin<5, cutoff = 1500; end
@@ -29,12 +30,14 @@ B_magls = zeros(nSH, 2, nBins);
 B_magls(:,1,1:kk_cutoff) = Y_pinv * squeeze(hrtfs(1,:,1:kk_cutoff));
 B_magls(:,2,1:kk_cutoff) = Y_pinv * squeeze(hrtfs(2,:,1:kk_cutoff));
 
-n_delta = 5;
-assert(kk_cutoff > n_delta+2)
-delta_phi = mean(diff(unwrap(angle(squeeze(B_magls(1,:,2:n_delta+1)).')), 1), 1);
+%   Hold, C., et al (2023). Magnitude-Least-Squares Binaural Ambisonic
+%   Rendering with Phase Continuation. DAGA.
+n_delta = 3;
+assert(kk_cutoff >= n_delta+2)
+delta_phi = mean(diff(unwrap(angle(squeeze(B_magls(1,:,2:n_delta+2)).')), 1), 1);
 
 for kk=1:nBins
-    if kk<kk_cutoff 
+    if kk<=kk_cutoff 
         %H = hrtfs(:,:,kk);
         %if weights
         %    B_magls(:,:,kk) = (Y_na*W*Y_na.')\(Y_na*W*H.');
@@ -43,12 +46,6 @@ for kk=1:nBins
         %    B_magls(:,:,kk) = (Y_na*Y_na.')\Y_na*H.';
         %end
     else
-%         D_prev = decMtx(:,:,kk-1);%B_magls(:,:,kk-1)';
-%         H_ambi_prev = D_prev*Y_na;
-%         phiH_prev = angle(H_ambi_prev);
-%         H_mod = abs(hrtfs(:,:,kk)).*exp(1i*phiH_prev);
-%         B_magls(:,:,kk) = (Y_na*W*Y_na')\(Y_na*W*H_mod.');
-        
         D_prev = B_magls(:,:,kk-1);
         H_ambi_prev = Y_na.' * D_prev;
         phiH_prev = angle(H_ambi_prev);

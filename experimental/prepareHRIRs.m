@@ -18,9 +18,10 @@ pars.hrir_dirs_deg = hrir_dirs_deg;
 itd = computeITDfromXCorr(hrirs, pars.fs);
 pars.hrtf_itd = itd;        % nHRTF x 1
 eqTaps = hrirsDiffuseFieldEQ(hrirs, 1, pars.hrirs_weights);
-tapswin = cos(linspace(0, pi/2, 32));
-eqTaps = eqTaps(1:256);
-eqTaps(end-31:end) = eqTaps(end-31:end) .* tapswin.';
+eqTaps = eqTaps(1:size(hrirs,1));
+nTaperTaps = round(size(hrirs,1) / 8);
+tapswin = cos(linspace(0, pi/2, nTaperTaps));
+eqTaps(end-nTaperTaps+1:end) = eqTaps(end-nTaperTaps+1:end) .* tapswin.';
 hrirs_filt(:,1,:) = fftfilt(eqTaps, ...
     cat(1,squeeze(hrirs(:,1,:)),zeros(length(eqTaps),pars.numHrirs)));
 hrirs_filt(:,2,:) = fftfilt(eqTaps, ...

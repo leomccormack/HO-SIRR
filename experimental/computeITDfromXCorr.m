@@ -6,13 +6,13 @@ if nargin<3, cutoff = 800; end
 
 nDirs = size(hrirs,3);
 
-ntaps = 250;
+ntaps = 256;
 lp = fir1(ntaps, cutoff/(fs/2),'low');
 if cutoff
     %hrirs_lp = filter(lp,1,[hrirs; zeros(ntaps,2,nDirs)]);
     % zero-phase filter
     hrirs_lp = filtfilt(lp,1, ...
-        cat(1,zeros(ntaps,2,nDirs),hrirs,zeros(ntaps,2,nDirs)));
+        cat(1,zeros(2*ntaps,2,nDirs),hrirs,zeros(2*ntaps,2,nDirs)));
 else
     hrirs_lp = hrirs;
 end
