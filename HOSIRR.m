@@ -74,6 +74,8 @@ function [lsir, lsir_ndiff, lsir_diff, pars, analysis] = HOSIRR(shir, pars)
 %   leo.mccormack@aalto.fi
 %   Archontis Politis, 12/06/2018
 %   archontis.politis@aalto.fi
+%   Chris Hold, 17/11/2021
+%   christoph.hold@aalto.fi
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -153,10 +155,35 @@ nLS = size(ls_dirs_deg,1);
 vbap_gtable_res = [2 2]; % azi, elev, step sizes in degrees
 gtable = getGainTable(ls_dirs_deg, vbap_gtable_res); 
  
-% Sector design 
-[~,sec_dirs_rad] = getTdesign(2*(pars.order)); 
+% Sector design
+if (~isfield(pars, 'pattern')), pars.pattern = 'pwd'; end
+if (~isfield(pars, 'ENABLE_DIFF_PR')), pars.ENABLE_DIFF_PR = true; end
+
+[~,sec_dirs_rad] = getTdesign(2*(pars.order));
 A_xyz = computeVelCoeffsMtx(pars.order-1);
-[pars.sectorCoeffs, pars.normSec] = computeSectorCoeffs(pars.order-1, A_xyz, 'pwd', sec_dirs_rad, 'EP');
+[pars.sectorCoeffs, pars.secNorms, sec_dirs_rad] = ...
+    computeSectorCoeffs(pars.order-1, A_xyz, pars.pattern, [], sec_dirs_rad);
+% amplitude normalisation term
+beta_A = pars.secNorms(1);
+% energy normalisation term
+beta_E = pars.secNorms(2);
+% Perfect Reconstruction of diffuse component
+if pars.ENABLE_DIFF_PR
+    switch pars.pattern
+        case 'cardioid'
+            b_n_an = beamWeightsCardioid2Spherical(pars.order-1);
+        case 'maxRE'
+            b_n_an = beamWeightsMaxEV(pars.order-1);
+        case 'pwd'
+            b_n_an = beamWeightsHypercardioid2Spherical(pars.order-1);
+    end
+    c_n = b_n_an ./ sqrt((2*(0:pars.order-1).'+1) / (4*pi));
+    c_n_res = 1./(c_n./c_n(1));
+else
+    c_n_res = ones(pars.order, 1);
+end
+
+
 if pars.order~=1
     pars.sectorDirs = sec_dirs_rad;
 end 
@@ -171,7 +198,7 @@ else
     shir_res = shir_pad;
 end
 clear insig_pad
-  
+
 % time-frequency processing for each frequency region
 maxfftsize = 2*maxWinsize; 
 lsir_res_ndiff = zeros(lSig + 2*maxfftsize + xover_order, nLS, nRes);
@@ -220,7 +247,8 @@ for nr = 1:nRes
             if pars.order==1
                 D_ls = sqrt(4*pi/nLS).*getRSH(pars.order, ls_dirs_deg).';   
             else 
-                Y_enc = sqrt(4*pi).*getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
+                Y_enc = diag(replicatePerOrder(c_n_res))*...
+                    getRSH(pars.order-1, pars.sectorDirs*180/pi); % encoder
                 D_ls = sqrt(4*pi/nLS).*getRSH(pars.order-1, ls_dirs_deg).';   
             end    
     end 
@@ -271,7 +299,7 @@ for nr = 1:nRes
                 % Compute broad-band active-intensity vector
                 pvCOV = (WXYZ_sec(1:maxDiffFreq_Ind,:)'*WXYZ_sec(1:maxDiffFreq_Ind,:)); 
                 I_diff = real(pvCOV(2:4,1)); 
-                energy = 0.5.*real(trace(pvCOV));  % cast back to real
+                energy = 0.5 .* real(trace(pvCOV));  % cast back to real
 
                 % Estimating and time averaging of boadband diffuseness
                 diff_intensity = (1-pars.alpha_diff).*I_diff + pars.alpha_diff.*prev_intensity(:,n);
@@ -280,7 +308,7 @@ for nr = 1:nRes
                 prev_energy(n) = diff_energy; 
                 diffs(:,n) = 1 - sqrt(sum(diff_intensity.^2)) ./ (diff_energy + eps); 
             else  
-                energy = 0.5.*sum(abs(WXYZ_sec).^2,2); 
+                energy = 0.5 .* sum(abs(WXYZ_sec).^2,2); 
             
                 % Time averaging of intensity-vector for the diffuseness
                 % estimate per bin
@@ -292,10 +320,11 @@ for nr = 1:nRes
                 %assert(all(diffs(:,n)<=1.001))
                 %assert(all(diffs(:,n)>=0))
             end 
-
+             
             % storage for estimated parameters over time
             analysis.azim{nr}(:,framecount,n) = azim(:,n);
             analysis.elev{nr}(:,framecount,n) = elev(:,n);
+            assert(energy>=0)
             analysis.energy{nr}(:,framecount,n) = energy;
             analysis.diff{nr}(:,framecount,n) = diffs(:,n); 
         end 
@@ -305,7 +334,7 @@ for nr = 1:nRes
             z_diff = zeros(nBins_syn, numSec); 
         end
         z_00 = zeros(nBins_syn, numSec); 
-        W_S = pars.sectorCoeffs./sqrt(4*pi);   
+        W_S = pars.sectorCoeffs;   
         for n=1:numSec  
              
             % NON-DIFFUSE PART
@@ -327,18 +356,15 @@ for nr = 1:nRes
             % Interpolate panning filters 
             ndiffgains = interpolateFilters(permute(ndiffgains, [3 2 1]), fftsize);
             ndiffgains = permute(ndiffgains, [3 2 1]);
-
-            % Normalisation term
-            nnorm = sqrt(pars.normSec);
             
             % generate non-diffuse stream
             z_00(:,n) = inspec_syn*W_S(:, 4*(n-1) + 1);
-            outspec_ndiff = outspec_ndiff + ndiffgains .* (nnorm.*z_00(:,n)*ones(1,nLS));
+            outspec_ndiff = outspec_ndiff + ndiffgains .* (beta_A.*z_00(:,n)*ones(1,nLS));
     
             % DIFFUSE PART
             switch pars.RENDER_DIFFUSE
                 case 0
-                    % No diffuse-field rendering
+                    % No diffuse-fieldendering
                 case 1
                     % New SIRR diffuse stream rendering, based on re-encoding the 
                     % sector signals scaled with the diffuseness estimates
@@ -346,15 +372,15 @@ for nr = 1:nRes
                     diffgains = interpolateFilters(permute(diffgains, [3 2 1]), fftsize);
                     diffgains = permute(diffgains, [3 2 1]); 
                     if pars.order == 1
-                        a_diff = repmat(diffgains, [1 nSH]).*inspec_syn./sqrt(nSH);
+                        a_diff = repmat(diffgains, [1 nSH]).*inspec_syn;  % Check
                     else
-                        z_diff(:, n) = diffgains .* z_00(:,n); 
+                        z_diff(:, n) = diffgains .* sqrt(beta_E) .* z_00(:,n); 
                     end
             end  
         end 
         if pars.RENDER_DIFFUSE
             if pars.order > 1
-                a_diff = z_diff./sqrt(numSec) * Y_enc.'; 
+                a_diff = z_diff * Y_enc.'; 
             end % encode 
             outspec_diff = a_diff * D_ls.'; % decode
         end
@@ -365,17 +391,12 @@ for nr = 1:nRes
             outspec_diff = abs(outspec_diff) .* exp(1i*randomPhi);
         end  
         
-        analysis.sf_energy{nr}(framecount,1) = mean(sum(abs(inspec_syn).^2/nSH,2)); 
+        analysis.sf_energy{nr}(framecount,1) = mean((4*pi/nSH)*sum(abs(inspec_syn).^2,2)); 
         analysis.ndiff_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff).^2,2)); 
         analysis.diff_energy{nr}(framecount,1) = mean(sum(abs(outspec_diff).^2,2));
-         
-        % ambi_ = mean(sum(abs(a_diff).^2,2)); 
-%         sf_ = analysis.sf_energy{nr}(framecount,1); 
-%         ndiff_ = analysis.ndiff_energy{nr}(framecount,1);
-%         diff_ = analysis.diff_energy{nr}(framecount,1);
-%         werew=(diff_+ndiff_)/sf_;
-%         asfadsfwerew=(diff_+ndiff_)-sf_;
-%          
+        analysis.total_energy{nr}(framecount,1) = mean(sum(abs(outspec_ndiff+outspec_diff).^2,2));
+
+
         % overlap-add synthesis
         lsir_win_ndiff = real(ifft([outspec_ndiff; conj(outspec_ndiff(end-1:-1:2,:))]));
         lsir_res_ndiff(idx+(0:fftsize-1),:,nr) = lsir_res_ndiff(idx+(0:fftsize-1),:,nr) + lsir_win_ndiff;
@@ -417,6 +438,7 @@ if pars.RENDER_DIFFUSE
     lsir_diff = lsir_pad_diff(delay + (1:lSig), :);
 end
 
+    
 % apply convolution decorrelation to diffuse stream if specified
 if isequal(pars.decorrelationType, 'noise') && pars.RENDER_DIFFUSE
     % we want to apply just enough noise-based reverberation as 
@@ -619,13 +641,7 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [sectorCoeffs, normSec] = computeSectorCoeffs(orderSec, A_xyz, pattern, sec_dirs, norm)
-% COMPUTESECTORCOEFFS Computes the beamforming matrices of sector and 
-% velocity coefficients for energy-preserving sectors, for orderSec, 
-% for real SH.
-%
-%   Archontis Politis, 12/06/2018
-%   archontis.politis@aalto.fi
+function [sectorCoeffs, secNorms, sec_dirs] = computeSectorCoeffs(orderSec, A_xyz, pattern, grid, sec_dirs)
 
 orderVel = orderSec+1;
 
@@ -638,50 +654,51 @@ if orderSec == 0
          0       sqrt(4*pi/3)   0               0];
 
     % convert to real SH coefficients to use with the real signals
-    normSec = 1;
-    sectorCoeffs = normSec*wxyzCoeffs;
-    
+    secNorms = [1 1];
+    sectorCoeffs = wxyzCoeffs;
+    sec_dirs = [];  % or [0, 0], empty more explicit
+
 else
     
     wxyzCoeffs = [];
-    if nargin<4
-        switch norm
+    if nargin<5
+        switch grid
             case 'AP'
                 [~, sec_dirs] = getTdesign(orderSec+1); 
             case 'EP'
                 [~, sec_dirs] = getTdesign(2*orderSec);
-        end 
-        
+            otherwise
+                error("Use 'AP' or 'EP' grid");
+        end   
     end
     numSec = size(sec_dirs,1);
     
     switch pattern
         case 'cardioid'
             b_n = beamWeightsCardioid2Spherical(orderSec);
-            Q = 2*orderSec+1;
         case 'maxRE'
             b_n = beamWeightsMaxEV(orderSec);
-            Q = 4*pi/(b_n'*b_n);            
-        case 'pwd'
+        case {'pwd', 'hypercardioid'}
             b_n = beamWeightsHypercardioid2Spherical(orderSec);
-            Q = (orderSec+1)^2;            
+        otherwise
+            error("Unknown sector design! " + pattern);
     end
     
-    switch norm
-        case 'AP'
-            % amplitude normalisation for sector patterns
-            normSec = (orderSec+1)/numSec;
-        case 'EP'
-            % energy normalisation for sector patterns
-            normSec = Q/numSec;
-    end 
+    c_n = b_n ./ sqrt((2*(0:orderSec).'+1) / (4*pi));  % remove m
+    w_nm = diag(replicatePerOrder(c_n)) * getRSH(orderSec, [0,0]);
+    % amplitude preservation factor
+    beta_A = (sqrt(4*pi)) / (w_nm(1) * numSec);
+    % energy preservation factor (sqrt when applied to signals)
+    beta_E = (4*pi) / (w_nm' * w_nm * numSec);
+
+    secNorms = [beta_A, beta_E];
     
     for ns = 1:numSec
         
         % rotate the pattern by rotating the coefficients
         azi_sec = sec_dirs(ns, 1);
         polar_sec = pi/2-sec_dirs(ns, 2); % from elevation to inclination
-        c_nm = sqrt(normSec) * rotateAxisCoeffs(b_n, polar_sec, azi_sec, 'complex');
+        c_nm = rotateAxisCoeffs(b_n, polar_sec, azi_sec, 'complex');  % CFH: no compensation here
         % get the velocity coeffs
         x_nm = A_xyz(1:(orderVel+1)^2, 1:(orderSec+1)^2, 1)*c_nm;
         y_nm = A_xyz(1:(orderVel+1)^2, 1:(orderSec+1)^2, 2)*c_nm;
