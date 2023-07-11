@@ -4,9 +4,11 @@ clear all, close all %, dbstop if error %#ok
 addpath '..'
 addpath '../_Simulated_Rooms_' '../_Stimuli_'
 
-demo_order = 8;  
+demo_order = 3;  
 [input_stimulus, fs_in] = audioread('music__KickDrumClicky.wav');
-sofapath = '~/data/HRTFs/Kemar_Aalto_2016/KemarAuralID.sofa';
+%sofapath = '~/data/HRTFs/Kemar_Aalto_2016/KemarAuralID.sofa';
+sofapath = '~/data/HRTFs/THK_KU100/HRIR_L2354.sofa';
+
 
 % %% FIRST-ORDER SIRR BIN CHECKS
 % pars.order = 1;  
@@ -254,7 +256,7 @@ rms(sirr_bind(0.5*fs:fs, :))
 %%
 figure
 subplot(4,1,1)
-plot(vls_sirr)
+plot(sirr_vls)
 ylim([-1, 1])
 grid on
 title('VLS HOSIRR')

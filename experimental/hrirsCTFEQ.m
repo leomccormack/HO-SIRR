@@ -1,5 +1,5 @@
-function [eqTaps] = hrirsDiffuseFieldEQ(hrirs, MINPHASE, gridWeights)
-%hrirsDiffuseFieldEQ Calculate diffuse field (common transfer function) EQ.
+function [eqTaps] = hrirsCTFEQ(hrirs, fs, MINPHASE, gridWeights)
+%hrirsCTFEQ Calculate diffuse field (common transfer function) EQ.
 %   INPUTS
 %       hrirs : [len x 2 x grid]
 %       MINPHASE : bool (optional, default true)
@@ -7,12 +7,12 @@ function [eqTaps] = hrirsDiffuseFieldEQ(hrirs, MINPHASE, gridWeights)
 %   OUTPUT
 %       eqTaps : Filter taps [len x 1]
 %       
-% Chris Hold 2021,2022
+% Chris Hold 2021,2022,2023
 
-if nargin < 3
+if nargin <4
     gridWeights = [];
 end
-if nargin < 2
+if nargin < 3
     MINPHASE = true;
 end
 
@@ -29,7 +29,7 @@ end
 
 
 % FD transform
-nfft = 16*numTaps;  % interpolate
+nfft = max(2048, 16*numTaps);  % interpolate
 H = fft(hrirs, nfft, 1);
 Hs = H(1:nfft/2+1, :, :);
 
@@ -37,26 +37,35 @@ Hs = H(1:nfft/2+1, :, :);
 % weighted RMS
 Havg = sqrt(sum(reshape(gridWeights, 1, 1, []) .* abs(Hs).^2, 3) / (4*pi));
 
-% Avg (left, right)
-Havg = mean(Havg, 2);
-
 % Smoothing
 HavgSmooth = Havg;
+for i = 1:2
 for bin = 2:nfft/2+1
     if ~mod(bin, 2)
         avgidx = (bin - bin/2 : min(3/2 * bin, nfft/2+1));
     end
     win = hann(length(avgidx));
     % weighted average
-    HavgSmooth(bin) = sum(win .* Havg(avgidx)) / sum(win);
+    HavgSmooth(bin, i) = sum(win .* Havg(avgidx, i)) / sum(win);
 end
+end
+
+% Avg (left, right)
+HavgSmooth = mean(Havg, 2);
+
 
 % frequency mask for lo and hi, avoid inversion there
 freqWeight = ones(nfft/2+1, 1);
-wLo = hann(nfft/64+1);
-freqWeight(1:nfft/128 + 1) = wLo(1:nfft/128 + 1);
-wHi = hann(nfft/2 + 1);
-freqWeight(end-nfft/4:end) = wHi(end-nfft/4:end);
+fv = linspace(0, fs/2, nfft/2+1);
+fLo = 100;
+[~, midx] = min(abs(fv - fLo));
+wLo = hann(2*midx+1);
+freqWeight(1:midx + 1) = wLo(1:midx + 1);
+fHi = 15000;
+[~, midx] = min(abs(fv - fHi));
+midx = length(fv) - midx;
+wHi = hann(2*midx+1);
+freqWeight(end-midx:end) = wHi(end-midx:end);
 
 % Avoid excessive filters
 HavgSmooth = HavgSmooth / mean(HavgSmooth);
