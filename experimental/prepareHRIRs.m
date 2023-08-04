@@ -18,7 +18,7 @@ pars.hrir_dirs_deg = hrir_dirs_deg;
 
 itd = computeITDfromXCorr(hrirs, pars.fs);
 pars.hrtf_itd = itd;        % nHRTF x 1
-eqTaps = hrirsCTFEQ(hrirs, pars.fs, 1, pars.hrirs_weights);
+eqTaps = hrirsCTFEQ(hrirs, pars.fs, 0, pars.hrirs_weights);
 eqTaps = eqTaps(1:size(hrirs,1));
 nTaperTaps = round(size(hrirs,1) / 8);
 tapswin = cos(linspace(0, pi/2, nTaperTaps));
@@ -32,5 +32,5 @@ hrirs_filt(:,2,:) = fftfilt(eqTaps, ...
 pars.hrirs = hrirs_filt;
 pars.numHrirs = size(hrirs, 3);
 pars.lenHrirs = size(hrirs, 1);
-
+pars.CTFeqTaps = eqTaps;
 end

@@ -51,24 +51,24 @@ end
 end
 
 % Avg (left, right)
-HavgSmooth = mean(Havg, 2);
+HavgSmooth = mean(HavgSmooth, 2);
 
 
 % frequency mask for lo and hi, avoid inversion there
 freqWeight = ones(nfft/2+1, 1);
 fv = linspace(0, fs/2, nfft/2+1);
-fLo = 100;
-[~, midx] = min(abs(fv - fLo));
-wLo = hann(2*midx+1);
-freqWeight(1:midx + 1) = wLo(1:midx + 1);
-fHi = 15000;
-[~, midx] = min(abs(fv - fHi));
-midx = length(fv) - midx;
-wHi = hann(2*midx+1);
-freqWeight(end-midx:end) = wHi(end-midx:end);
+fLo = 125;
+[~, idx_lo] = min(abs(fv - fLo));
+wLo = hann(2*idx_lo+1);
+freqWeight(1:idx_lo + 1) = wLo(1:idx_lo + 1);
+fHi = 12500;
+[~, idx_hi] = min(abs(fv - fHi));
+idx_hi = length(fv) - idx_hi;
+wHi = hann(2*idx_hi+1);
+freqWeight(end-idx_hi:end) = wHi(end-idx_hi:end);
 
 % Avoid excessive filters
-HavgSmooth = HavgSmooth / mean(HavgSmooth);
+HavgSmooth = HavgSmooth / mean(abs(HavgSmooth(idx_lo:idx_hi)));
 
 % frequency weighted inversion 
 HinvWeighted = (freqWeight).*(1 ./ HavgSmooth) + ...
@@ -76,10 +76,15 @@ HinvWeighted = (freqWeight).*(1 ./ HavgSmooth) + ...
 
 
 
-% Get taps by freq sampling
-eqTaps = fir2(numTaps, linspace(0, 1, nfft/2+1), HinvWeighted.');
+% Get taps
 if MINPHASE
-    [~, eqTaps] = rceps(eqTaps);
+    %[~, eqTapsMin] = rceps(eqTaps);
+    minMag = cat(1, HinvWeighted, HinvWeighted(end-1:-1:2));
+    minPhase = -imag(hilbert(log(minMag)));
+    eqTapsMin = ifft(minMag .* exp(1i * minPhase), 'symmetric');
+    assert(sum(abs(eqTapsMin(numTaps:end)) < 0.1))      
+    eqTaps = eqTapsMin(1:numTaps);
+else
+    eqTaps = fir2(numTaps, linspace(0, 1, nfft/2+1), HinvWeighted.').';
 end
-eqTaps = eqTaps.';
 end
