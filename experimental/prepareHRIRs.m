@@ -30,7 +30,7 @@ hrirs_filt(:,2,:) = fftfilt(eqTaps, ...
 
 % write back
 pars.hrirs = hrirs_filt;
-pars.numHrirs = size(hrirs, 3);
-pars.lenHrirs = size(hrirs, 1);
+pars.numHrirs = size(pars.hrirs, 3);
+pars.lenHrirs = size(pars.hrirs, 1);
 pars.CTFeqTaps = eqTaps;
 end
